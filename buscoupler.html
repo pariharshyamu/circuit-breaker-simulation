@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Breaker Control Simulation (Enhanced)</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --success-color: #16a34a;
+            --danger-color: #dc2626;
+            --warning-color: #f59e0b;
+            --neutral-color: #6b7280;
+            --background-color: #f3f4f6;
+            --panel-bg: #ffffff;
+            --shadow: 0 4px 6px rgba(0,0,0,0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--background-color);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
+        }
+
+        h1 {
+            color: #1f2937;
+            margin-bottom: 1.5rem;
+            font-size: 1.8rem;
+            text-align: center;
+        }
+
+        .main-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+            justify-content: center;
+        }
+
+        .controls-panel {
+            flex: 1;
+            min-width: 300px;
+            max-width: 400px;
+            background: var(--panel-bg);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+
+        .canvas-panel {
+            flex: 2;
+            min-width: 550px;
+            background: var(--panel-bg);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .status-bar {
+            width: 100%;
+            background: #f8fafc;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #374151;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-dot.open { background: var(--danger-color); }
+        .status-dot.closed { background: var(--success-color); }
+        .status-dot.active { background: var(--warning-color); }
+
+        .interlocks, .selectors-section, .bc-interlocks {
+            background: #f8fafc;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .interlocks.active, .bc-interlocks.active {
+            animation: pulse 2s infinite;
+        }
+
+        .interlocks h3, .selectors-section h3, .bc-interlocks h3 {
+            font-size: 1.1rem;
+            color: #1f2937;
+            margin: 0 0 10px 0;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            color: #374151;
+            font-size: 0.95rem;
+        }
+
+        input[type="checkbox"], input[type="radio"] {
+            accent-color: var(--primary-color);
+            cursor: pointer;
+        }
+
+        .switch-group {
+            margin-bottom: 15px;
+        }
+
+        .switch-group > label {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .control-button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .control-button::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.3s, height 0.3s;
+        }
+
+        .control-button:active::after {
+            width: 100px;
+            height: 100px;
+        }
+
+        .close-button { background: var(--success-color); color: white; }
+        .close-button:hover:not(:disabled) { background: #15803d; }
+        .trip-button { background: var(--danger-color); color: white; }
+        .trip-button:hover:not(:disabled) { background: #b91c1c; }
+        .tss-button { background: var(--warning-color); color: white; }
+        .tss-button:hover:not(:disabled) { background: #d97706; }
+        .clear-button { background: var(--neutral-color); color: white; }
+        .clear-button:hover:not(:disabled) { background: #4b5563; }
+        .control-button:disabled {
+            background: #d1d5db;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        #breakerCanvas {
+            border: 1px solid #e5e7eb;
+            background: #f9fafb;
+            border-radius: 4px;
+            transition: opacity 0.3s ease;
+        }
+
+        .breaker-controls {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            margin-top: 15px;
+            gap: 10px;
+        }
+
+        .breaker-control-unit {
+            text-align: center;
+            flex: 1;
+        }
+
+        .breaker-control-unit p {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        .log-area {
+            max-width: 1400px;
+            margin: 20px auto;
+            background: var(--panel-bg);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            position: relative;
+        }
+
+        .log-area h2 {
+            margin: 0 0 10px 0;
+            font-size: 1.2rem;
+            color: #1f2937;
+        }
+
+        #log {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 15px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            border-radius: 6px;
+            line-height: 1.6;
+        }
+
+        .log-message {
+            opacity: 0;
+            animation: fadeIn 0.5s forwards;
+        }
+
+        .log-error { color: #f87171; }
+        .log-success { color: #6ee7b7; }
+        .log-warning { color: #fcd34d; }
+
+        [data-tooltip] {
+            position: relative;
+        }
+
+        [data-tooltip]:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1f2937;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            z-index: 10;
+            margin-bottom: 8px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(37, 99, 235, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .controls-panel, .canvas-panel {
+                width: 100%;
+                max-width: 100%;
+            }
+
+            .breaker-controls {
+                flex-direction: column;
+                align-items: center;
+                gap: 15px;
+            }
+
+            .status-bar {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+    <h1>Buscoupler Control Simulation</h1>
+    <h3 style="text-align: center; font-size: 1rem; color: var(--neutral-color); margin-bottom: 20px;">Prepared by: S.H. Parihar
+    <p style="text-align: center; font-size: 1rem; color: var(--neutral-color); margin-bottom: 20px;">
+        This simulation demonstrates the operation of a bus coupler and incomer breakers with interlocks and selector switches.
+
+    <div class="main-container">
+        <div class="controls-panel">
+            <div class="interlocks common-interlocks">
+                <h3>Common Interlocks</h3>
+                <label data-tooltip="Prevents all breaker operations"><input type="checkbox" id="globalLockoutCheckbox"> Global Lockout (86)</label>
+                <label data-tooltip="Prevents Bus Coupler operations"><input type="checkbox" id="bcLockoutCheckbox"> BC Lockout (86BC)</label>
+                <label data-tooltip="Bus 1 grounding status"><input type="checkbox" id="bus1EarthedCheckbox"> Bus 1 Earthed</label>
+                <label data-tooltip="Bus 2 grounding status"><input type="checkbox" id="bus2EarthedCheckbox"> Bus 2 Earthed</label>
+            </div>
+
+            <div class="selectors-section">
+                <h3>Selector Switches</h3>
+                <div class="switch-group">
+                    <label>Trip Selector (TSS):</label>
+                    <div>
+                        <label><input type="radio" name="tss" value="ic1" checked> I/C-1</label>
+                        <label><input type="radio" name="tss" value="bc"> BC</label>
+                        <label><input type="radio" name="tss" value="ic2"> I/C-2</label>
+                    </div>
+                    <button class="control-button tss-button" id="tssTripButton" data-tooltip="Trip selected breaker">Trip Selected</button>
+                </div>
+                <div class="switch-group">
+                    <label>Sync Selector (SSS):</label>
+                    <div>
+                        <label><input type="radio" name="sss" value="ic1" checked> I/C-1</label>
+                        <label><input type="radio" name="sss" value="bc"> BC</label>
+                        <label><input type="radio" name="sss" value="ic2"> I/C-2</label>
+                    </div>
+                </div>
+                <p style="color: var(--danger-color); font-size: 0.9rem; margin-top: 10px;">
+                    Auto-Trip: Closing SSS-selected breaker trips TSS-selected breaker (if different).
+                </p>
+            </div>
+
+            <div class="bc-interlocks">
+                <h3>Bus Coupler Closing Checks</h3>
+                <p style="font-size: 0.9rem; color: var(--neutral-color);">
+                    Requires: No Lockouts, Buses Not Earthed, ≥1 Incomer ON
+                </p>
+            </div>
+        </div>
+
+        <div class="canvas-panel">
+            <div class="status-bar">
+                <div class="status-item">
+                    <span class="status-dot" id="ic1Status"></span>
+                    <span>Incomer 1: <span id="ic1StatusText">Open</span></span>
+                </div>
+                <div class="status-item">
+                    <span class="status-dot" id="bcStatus"></span>
+                    <span>Bus Coupler: <span id="bcStatusText">Open</span></span>
+                </div>
+                <div class="status-item">
+                    <span class="status-dot" id="ic2Status"></span>
+                    <span>Incomer 2: <span id="ic2StatusText">Open</span></span>
+                </div>
+            </div>
+            <canvas id="breakerCanvas" width="600" height="300"></canvas>
+            <div class="breaker-controls">
+                <div class="breaker-control-unit">
+                    <p>Incomer 1</p>
+                    <button class="control-button close-button" id="ic1CloseBtn" data-breaker="ic1" data-tooltip="Close Incomer 1">Close</button>
+                    <button class="control-button trip-button" id="ic1TripBtn" data-breaker="ic1" data-tooltip="Trip Incomer 1">Trip</button>
+                </div>
+                <div class="breaker-control-unit">
+                    <p>Bus Coupler</p>
+                    <button class="control-button close-button" id="bcCloseBtn" data-breaker="bc" data-tooltip="Close Bus Coupler">Close</button>
+                    <button class="control-button trip-button" id="bcTripBtn" data-breaker="bc" data-tooltip="Trip Bus Coupler">Trip</button>
+                </div>
+                <div class="breaker-control-unit">
+                    <p>Incomer 2</p>
+                    <button class="control-button close-button" id="ic2CloseBtn" data-breaker="ic2" data-tooltip="Close Incomer 2">Close</button>
+                    <button class="control-button trip-button" id="ic2TripBtn" data-breaker="ic2" data-tooltip="Trip Incomer 2">Trip</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="log-area">
+        <h2>Operation Log</h2>
+        <button class="control-button clear-button" id="clearLogBtn" data-tooltip="Clear all log messages" style="position: absolute; right: 20px; top: 20px;">Clear Log</button>
+        <pre id="log"></pre>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // State Management
+            const state = {
+                breakers: {
+                    ic1: { isOpen: true, name: 'Incomer 1', transition: false },
+                    bc: { isOpen: true, name: 'Bus Coupler', transition: false },
+                    ic2: { isOpen: true, name: 'Incomer 2', transition: false }
+                },
+                interlocks: {
+                    globalLockout: false,
+                    bcLockout: false,
+                    bus1Earthed: false,
+                    bus2Earthed: false
+                },
+                selectors: {
+                    tss: 'ic1',
+                    sss: 'ic1',
+                    autoTripTarget: null
+                },
+                isAnimating: false
+            };
+
+            // DOM References
+            const elements = {
+                canvas: document.getElementById('breakerCanvas'),
+                log: document.getElementById('log'),
+                buttons: {
+                    close: {
+                        ic1: document.getElementById('ic1CloseBtn'),
+                        bc: document.getElementById('bcCloseBtn'),
+                        ic2: document.getElementById('ic2CloseBtn')
+                    },
+                    trip: {
+                        ic1: document.getElementById('ic1TripBtn'),
+                        bc: document.getElementById('bcTripBtn'),
+                        ic2: document.getElementById('ic2TripBtn')
+                    },
+                    tssTrip: document.getElementById('tssTripButton'),
+                    clearLog: document.getElementById('clearLogBtn')
+                },
+                checkboxes: {
+                    globalLockout: document.getElementById('globalLockoutCheckbox'),
+                    bcLockout: document.getElementById('bcLockoutCheckbox'),
+                    bus1Earthed: document.getElementById('bus1EarthedCheckbox'),
+                    bus2Earthed: document.getElementById('bus2EarthedCheckbox')
+                },
+                radios: {
+                    tss: document.querySelectorAll('input[name="tss"]'),
+                    sss: document.querySelectorAll('input[name="sss"]')
+                },
+                status: {
+                    ic1: {
+                        dot: document.getElementById('ic1Status'),
+                        text: document.getElementById('ic1StatusText')
+                    },
+                    bc: {
+                        dot: document.getElementById('bcStatus'),
+                        text: document.getElementById('bcStatusText')
+                    },
+                    ic2: {
+                        dot: document.getElementById('ic2Status'),
+                        text: document.getElementById('ic2StatusText')
+                    }
+                }
+            };
+
+            // Canvas Setup
+            let ctx = null;
+            if (elements.canvas.getContext) {
+                ctx = elements.canvas.getContext('2d');
+            } else {
+                logMessage('ERROR: Canvas not supported.', 'error');
+                elements.canvas.style.display = 'none';
+                return;
+            }
+
+            const canvasConfig = {
+                width: elements.canvas.width,
+                height: elements.canvas.height,
+                bus: {
+                    y1: 60,
+                    y2: 240,
+                    startX: 40,
+                    endX: 560,
+                    color: '#4b5563',
+                    lineWidth: 5
+                },
+                breaker: {
+                    width: 24,
+                    height: 24,
+                    openColor: '#ef4444',
+                    closedColor: '#22c55e',
+                    lineColor: '#374151',
+                    lineWidth: 2,
+                    positions: {
+                        ic1: 150,
+                        bc: 300,
+                        ic2: 450
+                    }
+                }
+            };
+
+            // Animation State
+            const animationState = {
+                breakers: {
+                    ic1: { progress: state.breakers.ic1.isOpen ? 0 : 1 },
+                    bc: { progress: state.breakers.bc.isOpen ? 0 : 1 },
+                    ic2: { progress: state.breakers.ic2.isOpen ? 0 : 1 }
+                }
+            };
+
+            // Debounce Utility
+            function debounce(func, wait) {
+                let timeout;
+                return function (...args) {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => func.apply(this, args), wait);
+                };
+            }
+
+            // Logging
+            function logMessage(message, type = 'info') {
+                if (!elements.log) return;
+                const timestamp = new Date().toLocaleTimeString();
+                const messageElement = document.createElement('div');
+                messageElement.className = `log-message log-${type}`;
+                messageElement.textContent = `[${timestamp}] ${message}`;
+                elements.log.appendChild(messageElement);
+                elements.log.scrollTop = elements.log.scrollHeight;
+
+                // Limit log to 100 messages
+                const messages = elements.log.children;
+                if (messages.length > 100) {
+                    messages[0].remove();
+                }
+            }
+
+            // Canvas Drawing
+            function drawBus(y, isEarthed) {
+                if (!ctx) return;
+                ctx.beginPath();
+                ctx.moveTo(canvasConfig.bus.startX, y);
+                ctx.lineTo(canvasConfig.bus.endX, y);
+                ctx.strokeStyle = isEarthed ? '#f59e0b' : canvasConfig.bus.color;
+                ctx.lineWidth = canvasConfig.bus.lineWidth;
+                ctx.stroke();
+            }
+
+            function drawBreakerSymbol(x, y, size, progress) {
+                if (!ctx) return;
+                const isOpen = progress < 0.5;
+                ctx.lineWidth = canvasConfig.breaker.lineWidth;
+                ctx.strokeStyle = canvasConfig.breaker.lineColor;
+                ctx.fillStyle = isOpen ? canvasConfig.breaker.openColor : canvasConfig.breaker.closedColor;
+                ctx.strokeRect(x - size / 2, y - size / 2, size, size);
+                ctx.fillRect(x - size / 2, y - size / 2, size, size);
+
+                ctx.beginPath();
+                const angle = progress * Math.PI / 2;
+                if (isOpen) {
+                    ctx.moveTo(x - size / 2, y - size / 2);
+                    ctx.lineTo(x + size / 2 * Math.cos(angle), y - size / 2 + size * 0.4 * Math.sin(angle));
+                } else {
+                    ctx.moveTo(x - size / 2, y - size / 2);
+                    ctx.lineTo(x + size / 2 * Math.cos(angle), y + size / 2 * Math.sin(angle));
+                }
+                ctx.strokeStyle = '#FFF';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            }
+
+            function drawConnectionLine(x, startY, endY, active) {
+                if (!ctx) return;
+                ctx.beginPath();
+                ctx.moveTo(x, startY);
+                ctx.lineTo(x, endY);
+                ctx.strokeStyle = active ? '#16a34a' : canvasConfig.breaker.lineColor;
+                ctx.lineWidth = canvasConfig.breaker.lineWidth;
+                ctx.stroke();
+            }
+
+            function drawBreaker(id, x, progress) {
+                if (!ctx) return;
+                let symbolY, topY, bottomY;
+                let active = !state.breakers[id].isOpen;
+                if (id === 'ic1') {
+                    symbolY = canvasConfig.bus.y1 + 40;
+                    topY = canvasConfig.bus.y1 + canvasConfig.bus.lineWidth / 2;
+                    bottomY = canvasConfig.height;
+                    drawConnectionLine(x, symbolY + canvasConfig.breaker.height / 2, bottomY, active);
+                    drawConnectionLine(x, topY, symbolY - canvasConfig.breaker.height / 2, active);
+                } else if (id === 'ic2') {
+                    symbolY = canvasConfig.bus.y2 - 40;
+                    topY = 0;
+                    bottomY = canvasConfig.bus.y2 - canvasConfig.bus.lineWidth / 2;
+                    drawConnectionLine(x, topY, symbolY - canvasConfig.breaker.height / 2, active);
+                    drawConnectionLine(x, symbolY + canvasConfig.breaker.height / 2, bottomY, active);
+                } else {
+                    symbolY = canvasConfig.height / 2;
+                    topY = canvasConfig.bus.y1 + canvasConfig.bus.lineWidth / 2;
+                    bottomY = canvasConfig.bus.y2 - canvasConfig.bus.lineWidth / 2;
+                    drawConnectionLine(x, topY, symbolY - canvasConfig.breaker.height / 2, active);
+                    drawConnectionLine(x, symbolY + canvasConfig.breaker.height / 2, bottomY, active);
+                }
+                drawBreakerSymbol(x, symbolY, canvasConfig.breaker.width, progress);
+                ctx.fillStyle = '#000';
+                ctx.font = '12px Inter';
+                ctx.textAlign = 'center';
+                ctx.fillText(state.breakers[id].name, x, symbolY + canvasConfig.breaker.height + 10);
+            }
+
+            function redrawCanvas() {
+                if (!ctx) return;
+                ctx.clearRect(0, 0, canvasConfig.width, canvasConfig.height);
+
+                // Draw Busbars
+                drawBus(canvasConfig.bus.y1, state.interlocks.bus1Earthed);
+                drawBus(canvasConfig.bus.y2, state.interlocks.bus2Earthed);
+                ctx.fillStyle = '#000';
+                ctx.font = 'bold 14px Inter';
+                ctx.textAlign = 'left';
+                ctx.fillText('BUS 1', canvasConfig.bus.startX + 5, canvasConfig.bus.y1 - 10);
+                ctx.textAlign = 'right';
+                ctx.fillText(state.interlocks.bus1Earthed ? 'EARTHED' : '', canvasConfig.bus.endX - 5, canvasConfig.bus.y1 - 10);
+                ctx.textAlign = 'left';
+                ctx.fillText('BUS 2', canvasConfig.bus.startX + 5, canvasConfig.bus.y2 + 20);
+                ctx.textAlign = 'right';
+                ctx.fillText(state.interlocks.bus2Earthed ? 'EARTHED' : '', canvasConfig.bus.endX - 5, canvasConfig.bus.y2 + 20);
+
+                // Draw Breakers
+                drawBreaker('ic1', canvasConfig.breaker.positions.ic1, animationState.breakers.ic1.progress);
+                drawBreaker('bc', canvasConfig.breaker.positions.bc, animationState.breakers.bc.progress);
+                drawBreaker('ic2', canvasConfig.breaker.positions.ic2, animationState.breakers.ic2.progress);
+            }
+
+            // Update Status Bar
+            function updateStatusBar() {
+                ['ic1', 'bc', 'ic2'].forEach(id => {
+                    const isOpen = state.breakers[id].isOpen;
+                    elements.status[id].dot.className = `status-dot ${isOpen ? 'open' : 'closed'}`;
+                    elements.status[id].text.textContent = isOpen ? 'Open' : 'Closed';
+                });
+            }
+
+            // Update Interlock Visuals
+            function updateInterlockVisuals() {
+                const commonInterlocks = document.querySelector('.common-interlocks');
+                const bcInterlocks = document.querySelector('.bc-interlocks');
+                commonInterlocks.classList.toggle('active', state.interlocks.globalLockout || state.interlocks.bus1Earthed || state.interlocks.bus2Earthed);
+                bcInterlocks.classList.toggle('active', state.interlocks.bcLockout);
+            }
+
+            // Animation
+            function animateBreaker(id, targetState, callback) {
+                if (state.isAnimating) return;
+                state.isAnimating = true;
+                state.breakers[id].transition = true;
+                disableButtons(true);
+
+                const startProgress = animationState.breakers[id].progress;
+                const targetProgress = targetState ? 0 : 1;
+                const duration = 500;
+                const startTime = performance.now();
+
+                function animate(time) {
+                    const elapsed = time - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    animationState.breakers[id].progress = startProgress + (targetProgress - startProgress) * progress;
+                    redrawCanvas();
+
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        state.breakers[id].transition = false;
+                        state.isAnimating = false;
+                        animationState.breakers[id].progress = targetProgress;
+                        disableButtons(false);
+                        if (callback) callback();
+                        redrawCanvas();
+                        saveState();
+                    }
+                }
+
+                requestAnimationFrame(animate);
+            }
+
+            // Button Control
+            function disableButtons(disabled) {
+                Object.values(elements.buttons.close).forEach(btn => btn.disabled = disabled);
+                Object.values(elements.buttons.trip).forEach(btn => btn.disabled = disabled);
+                elements.buttons.tssTrip.disabled = disabled;
+            }
+
+            // Interlock Checks
+            function checkIC1CloseConditions() {
+                const logSuffix = ` for ${state.breakers.ic1.name}.`;
+                if (!state.breakers.ic1.isOpen) {
+                    logMessage(`Close Failed: Already Closed${logSuffix}`, 'error');
+                    return false;
+                }
+                if (state.interlocks.globalLockout) {
+                    logMessage(`Close Failed: Global Lockout Active${logSuffix}`, 'error');
+                    return false;
+                }
+                if (state.interlocks.bus1Earthed) {
+                    logMessage(`Close Failed: Bus 1 Earthed${logSuffix}`, 'error');
+                    return false;
+                }
+                if (!state.breakers.bc.isOpen) {
+                    if (state.selectors.sss === 'ic1' && state.selectors.tss === 'bc') {
+                        logMessage(`Changeover Permissive (BC->IC1) Met: SSS=IC1, TSS=BC${logSuffix}`, 'success');
+                    } else {
+                        logMessage(`Changeover Info (BC->IC1): SSS/TSS not set for permissive (SSS=${state.selectors.sss}, TSS=${state.selectors.tss})${logSuffix}`, 'warning');
+                    }
+                }
+                return true;
+            }
+
+            function checkIC2CloseConditions() {
+                const logSuffix = ` for ${state.breakers.ic2.name}.`;
+                if (!state.breakers.ic2.isOpen) {
+                    logMessage(`Close Failed: Already Closed${logSuffix}`, 'error');
+                    return false;
+                }
+                if (state.interlocks.globalLockout) {
+                    logMessage(`Close Failed: Global Lockout Active${logSuffix}`, 'error');
+                    return false;
+                }
+                if (state.interlocks.bus2Earthed) {
+                    logMessage(`Close Failed: Bus 2 Earthed${logSuffix}`, 'error');
+                    return false;
+                }
+                if (!state.breakers.bc.isOpen) {
+                    if (state.selectors.sss === 'ic2' && state.selectors.tss === 'bc') {
+                        logMessage(`Changeover Permissive (BC->IC2) Met: SSS=IC2, TSS=BC${logSuffix}`, 'success');
+                    } else {
+                        logMessage(`Changeover Info (BC->IC2): SSS/TSS not set for permissive (SSS=${state.selectors.sss}, TSS=${state.selectors.tss})${logSuffix}`, 'warning');
+                    }
+                }
+                return true;
+            }
+
+            function checkBCCloseConditions() {
+                const logSuffix = ` for ${state.breakers.bc.name}.`;
+                if (!state.breakers.bc.isOpen) {
+                    logMessage(`Close Failed: Already Closed${logSuffix}`, 'error');
+                    return false;
+                }
+                if (state.interlocks.globalLockout) {
+                    logMessage(`Close Failed: Global Lockout Active${logSuffix}`, 'error');
+                    return false;
+                }
+                if (state.interlocks.bcLockout) {
+                    logMessage(`Close Failed: BC Lockout Active (86BC)${logSuffix}`, 'error');
+                    return false;
+                }
+                if (state.interlocks.bus1Earthed) {
+                    logMessage(`Close Failed: Bus 1 Earthed${logSuffix}`, 'error');
+                    return false;
+                }
+                if (state.interlocks.bus2Earthed) {
+                    logMessage(`Close Failed: Bus 2 Earthed${logSuffix}`, 'error');
+                    return false;
+                }
+                const liveSourceExists = !state.breakers.ic1.isOpen || !state.breakers.ic2.isOpen;
+                if (!liveSourceExists) {
+                    logMessage(`Close Failed: No Incomer is ON${logSuffix}`, 'error');
+                    return false;
+                }
+                if (!state.breakers.ic1.isOpen && state.selectors.sss === 'bc' && state.selectors.tss === 'ic2') {
+                    logMessage(`Changeover Permissive (IC1->BC) Met: SSS=BC, TSS=IC2${logSuffix}`, 'success');
+                } else if (!state.breakers.ic2.isOpen && state.selectors.sss === 'bc' && state.selectors.tss === 'ic1') {
+                    logMessage(`Changeover Permissive (IC2->BC) Met: SSS=BC, TSS=IC1${logSuffix}`, 'success');
+                } else {
+                    logMessage(`Changeover Info (ICx->BC): SSS/TSS not set for permissive (SSS=${state.selectors.sss}, TSS=${state.selectors.tss})${logSuffix}`, 'warning');
+                }
+                return true;
+            }
+
+            // Core Actions
+            function executeTrip(breakerId, reason = 'command') {
+                if (state.breakers[breakerId].isOpen) {
+                    logMessage(`${reason} ${state.breakers[breakerId].name}: Already Open`, 'warning');
+                    return false;
+                }
+                state.breakers[breakerId].isOpen = true;
+                animateBreaker(breakerId, true, () => {
+                    logMessage(`${reason} ${state.breakers[breakerId].name} successful`, 'success');
+                    updateStatusBar();
+                });
+                return true;
+            }
+
+            function executeClose(breakerId) {
+                if (!state.breakers[breakerId].isOpen) {
+                    logMessage(`Close ${state.breakers[breakerId].name}: Already Closed`, 'warning');
+                    return false;
+                }
+                state.breakers[breakerId].isOpen = false;
+                animateBreaker(breakerId, false, () => {
+                    logMessage(`Close ${state.breakers[breakerId].name} successful`, 'success');
+                    updateStatusBar();
+                });
+                return true;
+            }
+
+            // Event Handlers
+            const handleCloseClick = debounce((event) => {
+                if (state.isAnimating) return;
+                const breakerId = event.target.getAttribute('data-breaker');
+                let checkFunction;
+                state.selectors.autoTripTarget = null;
+
+                switch (breakerId) {
+                    case 'ic1': checkFunction = checkIC1CloseConditions; break;
+                    case 'ic2': checkFunction = checkIC2CloseConditions; break;
+                    case 'bc': checkFunction = checkBCCloseConditions; break;
+                    default:
+                        logMessage(`Error: Unknown breaker ID ${breakerId}`, 'error');
+                        return;
+                }
+
+                if (breakerId === state.selectors.sss && state.selectors.tss !== breakerId) {
+                    state.selectors.autoTripTarget = state.selectors.tss;
+                    logMessage(`Auto-trip ARMED for ${state.breakers[state.selectors.tss].name}`, 'warning');
+                }
+
+                if (checkFunction()) {
+                    executeClose(breakerId);
+                    if (state.selectors.autoTripTarget) {
+                        setTimeout(() => {
+                            logMessage(`Executing auto-trip for ${state.breakers[state.selectors.autoTripTarget].name}`, 'warning');
+                            executeTrip(state.selectors.autoTripTarget, 'Auto-trip');
+                            state.selectors.autoTripTarget = null;
+                        }, 600);
+                    }
+                } else {
+                    alert(`Cannot close ${state.breakers[breakerId].name}. Check log for details.`);
+                    state.selectors.autoTripTarget = null;
+                }
+            }, 200);
+
+            const handleTripClick = debounce((event) => {
+                if (state.isAnimating) return;
+                const breakerId = event.target.getAttribute('data-breaker');
+                executeTrip(breakerId, 'Manual trip');
+                state.selectors.autoTripTarget = null;
+            }, 200);
+
+            const handleTssTripClick = debounce(() => {
+                if (state.isAnimating) return;
+                executeTrip(state.selectors.tss, 'TSS trip');
+                state.selectors.autoTripTarget = null;
+            }, 200);
+
+            const handleClearLog = () => {
+                elements.log.innerHTML = '';
+                logMessage('Log cleared', 'info');
+            };
+
+            // Interlock/Selector Handlers
+            elements.checkboxes.globalLockout.addEventListener('change', () => {
+                state.interlocks.globalLockout = elements.checkboxes.globalLockout.checked;
+                logMessage(`Global Lockout: ${state.interlocks.globalLockout ? 'ACTIVE' : 'INACTIVE'}`, 'info');
+                updateInterlockVisuals();
+                state.selectors.autoTripTarget = null;
+                redrawCanvas();
+            });
+
+            elements.checkboxes.bcLockout.addEventListener('change', () => {
+                state.interlocks.bcLockout = elements.checkboxes.bcLockout.checked;
+                logMessage(`BC Lockout (86BC): ${state.interlocks.bcLockout ? 'ACTIVE' : 'INACTIVE'}`, 'info');
+                updateInterlockVisuals();
+                state.selectors.autoTripTarget = null;
+                redrawCanvas();
+            });
+
+            elements.checkboxes.bus1Earthed.addEventListener('change', () => {
+                state.interlocks.bus1Earthed = elements.checkboxes.bus1Earthed.checked;
+                logMessage(`Bus 1: ${state.interlocks.bus1Earthed ? 'EARTHED' : 'NOT EARTHED'}`, 'info');
+                updateInterlockVisuals();
+                state.selectors.autoTripTarget = null;
+                redrawCanvas();
+            });
+
+            elements.checkboxes.bus2Earthed.addEventListener('change', () => {
+                state.interlocks.bus2Earthed = elements.checkboxes.bus2Earthed.checked;
+                logMessage(`Bus 2: ${state.interlocks.bus2Earthed ? 'EARTHED' : 'NOT EARTHED'}`, 'info');
+                updateInterlockVisuals();
+                state.selectors.autoTripTarget = null;
+                redrawCanvas();
+            });
+
+            elements.radios.tss.forEach(radio => {
+                radio.addEventListener('change', () => {
+                    if (radio.checked) {
+                        state.selectors.tss = radio.value;
+                        logMessage(`TSS Selection: ${state.breakers[state.selectors.tss].name}`, 'info');
+                        state.selectors.autoTripTarget = null;
+                        redrawCanvas();
+                    }
+                });
+            });
+
+            elements.radios.sss.forEach(radio => {
+                radio.addEventListener('change', () => {
+                    if (radio.checked) {
+                        state.selectors.sss = radio.value;
+                        logMessage(`SSS Selection: ${state.breakers[state.selectors.sss].name}`, 'info');
+                        state.selectors.autoTripTarget = null;
+                        redrawCanvas();
+                    }
+                });
+            });
+
+            // Attach Event Listeners
+            Object.values(elements.buttons.close).forEach(btn => btn.addEventListener('click', handleCloseClick));
+            Object.values(elements.buttons.trip).forEach(btn => btn.addEventListener('click', handleTripClick));
+            elements.buttons.tssTrip.addEventListener('click', handleTssTripClick);
+            elements.buttons.clearLog.addEventListener('click', handleClearLog);
+
+            // State Persistence
+            function saveState() {
+                const saveData = {
+                    breakers: {
+                        ic1: state.breakers.ic1.isOpen,
+                        bc: state.breakers.bc.isOpen,
+                        ic2: state.breakers.ic2.isOpen
+                    },
+                    interlocks: state.interlocks,
+                    selectors: {
+                        tss: state.selectors.tss,
+                        sss: state.selectors.sss
+                    }
+                };
+                localStorage.setItem('breakerSimulationState', JSON.stringify(saveData));
+            }
+
+            function loadState() {
+                const saved = localStorage.getItem('breakerSimulationState');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    state.breakers.ic1.isOpen = data.breakers.ic1;
+                    state.breakers.bc.isOpen = data.breakers.bc;
+                    state.breakers.ic2.isOpen = data.breakers.ic2;
+                    state.interlocks = data.interlocks;
+                    state.selectors.tss = data.selectors.tss;
+                    state.selectors.sss = data.selectors.sss;
+
+                    // Update UI
+                    elements.checkboxes.globalLockout.checked = state.interlocks.globalLockout;
+                    elements.checkboxes.bcLockout.checked = state.interlocks.bcLockout;
+                    elements.checkboxes.bus1Earthed.checked = state.interlocks.bus1Earthed;
+                    elements.checkboxes.bus2Earthed.checked = state.interlocks.bus2Earthed;
+                    elements.radios.tss.forEach(radio => {
+                        if (radio.value === state.selectors.tss) radio.checked = true;
+                    });
+                    elements.radios.sss.forEach(radio => {
+                        if (radio.value === state.selectors.sss) radio.checked = true;
+                    });
+
+                    animationState.breakers.ic1.progress = state.breakers.ic1.isOpen ? 0 : 1;
+                    animationState.breakers.bc.progress = state.breakers.bc.isOpen ? 0 : 1;
+                    animationState.breakers.ic2.progress = state.breakers.ic2.isOpen ? 0 : 1;
+
+                    updateStatusBar();
+                    updateInterlockVisuals();
+                    redrawCanvas();
+                }
+            }
+
+            // Keyboard Shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'l') {
+                    handleClearLog();
+                    e.preventDefault();
+                }
+            });
+
+            // Initialization
+            function init() {
+                if (!ctx) {
+                    logMessage('Initialization failed: Canvas unavailable', 'error');
+                    return;
+                }
+                loadState();
+                logMessage('Simulation Initialized', 'info');
+                redrawCanvas();
+                updateStatusBar();
+                updateInterlockVisuals();
+            }
+
+            init();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>11kV Incomer Sim - Drawing Debug</title>
+    <style>
+        :root {
+            --primary-bg: #f4f7fa;
+            --secondary-bg: #fff;
+            --panel-bg: #f8fafc;
+            --border-color: #d1d5db;
+            --text-color: #222;
+            --label-color: #444;
+            --header-color: #0d47a1;
+            --button-bg: linear-gradient(to bottom, #f9fafb, #e3e8ee);
+            --button-hover-bg: linear-gradient(to bottom, #e3e8ee, #cfd8dc);
+            --button-active-bg: linear-gradient(to bottom, #cfd8dc, #b0bec5);
+            --button-border: #b0bec5;
+            --button-active-color: #fff;
+            --button-active-bg-k1: linear-gradient(to bottom, #43a047, #388e3c);
+            --button-active-border-k1: #2e7d32;
+            --tooltip-bg: rgba(30, 41, 59, 0.95);
+            --glow-color-on: #43a047;
+            --glow-color-off: #b71c1c;
+            --glow-color-warn: #ffa000;
+            --glow-color-healthy: #1976d2;
+            --glow-color-dc: #d32f2f;
+            --focus-outline: #1976d2;
+        }
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+            background: var(--primary-bg);
+            color: var(--text-color);
+            min-height: 100vh;
+            width: 100vw;
+            overflow-x: hidden;
+        }
+        h1 {
+            text-align: center;
+            margin: 18px 0 10px 0;
+            color: var(--header-color);
+            font-size: 2.1em;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        .simulation-area {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: flex-start;
+            width: 100vw;
+            min-height: 80vh;
+            margin: 0 auto;
+            padding: 10px 0 30px 0;
+            background: var(--secondary-bg);
+            box-sizing: border-box;
+            gap: 28px;
+            border-radius: 18px;
+            box-shadow: 0 4px 32px rgba(30,41,59,0.07);
+        }
+        .controls, .indicators {
+            border: 1.5px solid var(--border-color);
+            padding: 18px 16px 16px 16px;
+            width: 250px;
+            min-width: 180px;
+            background: var(--panel-bg);
+            box-shadow: 0 2px 12px rgba(30,41,59,0.06);
+            border-radius: 14px;
+            margin: 0;
+            box-sizing: border-box;
+            max-height: 90vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .controls h2, .indicators h2 {
+            font-size: 1.18em;
+            color: var(--header-color);
+            margin: 0 0 10px 0;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .schematic {
+            border: 2.5px solid #90a4ae;
+            background: #fff;
+            box-shadow: 0 2px 16px rgba(30,41,59,0.10);
+            border-radius: 16px;
+            line-height: 0;
+            overflow: hidden;
+            width: 950px;
+            height: 650px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 5px;
+        }
+        #schematicCanvas {
+            display: block;
+            background-color: #f8fafc;
+            width: 950px;
+            height: 650px;
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 10px;
+        }
+        .controls button {
+            display: block;
+            width: 100%;
+            padding: 10px 0;
+            margin-bottom: 10px;
+            font-size: 1em;
+            font-weight: 500;
+            background: var(--button-bg);
+            border: 1.5px solid var(--button-border);
+            border-radius: 7px;
+            color: var(--header-color);
+            cursor: pointer;
+            transition: background 0.18s, box-shadow 0.18s, color 0.18s;
+            box-shadow: 0 1px 4px rgba(30,41,59,0.04);
+        }
+        .controls button:hover:not(:disabled), .controls button:focus-visible {
+            background: var(--button-hover-bg);
+            color: var(--header-color);
+            outline: 2px solid var(--focus-outline);
+        }
+        .controls button:active:not(:disabled) {
+            background: var(--button-active-bg);
+            color: var(--button-active-color);
+        }
+        .controls button.active {
+            background: var(--button-active-bg-k1);
+            color: #fff;
+            border-color: var(--button-active-border-k1);
+        }
+        .controls button.small {
+            padding: 7px 0;
+            font-size: 0.97em;
+            margin-bottom: 7px;
+        }
+        .controls hr {
+            margin: 10px 0 10px 0;
+            border: none;
+            border-top: 1px solid var(--border-color);
+        }
+        .lamp-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 1em;
+            gap: 8px;
+        }
+        .lamp {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            border: 2px solid #b0bec5;
+            box-shadow: 0 0 0 0 rgba(0,0,0,0);
+            transition: background 0.2s, box-shadow 0.2s;
+        }
+        .lamp.on {
+            background: var(--glow-color-on);
+            box-shadow: 0 0 12px 2px var(--glow-color-on), 0 0 2px 1px #fff;
+            border-color: #388e3c;
+        }
+        .lamp.off {
+            background: #e0e0e0;
+            border-color: #b0bec5;
+            box-shadow: none;
+        }
+        .lamp.warn {
+            background: var(--glow-color-warn);
+            box-shadow: 0 0 10px 2px var(--glow-color-warn);
+            border-color: #ffa000;
+        }
+        .lamp.dc {
+            background: var(--glow-color-dc);
+            box-shadow: 0 0 10px 2px var(--glow-color-dc);
+            border-color: #d32f2f;
+        }
+        /* Indicator lamp ON colors by ID */
+        .lamp.on#lampH3 { background: #d32f2f; box-shadow: 0 0 12px 2px #d32f2f, 0 0 2px 1px #fff; border-color: #b71c1c; } /* CB ON (RED) */
+        .lamp.on#lampH1 { background: #43a047; box-shadow: 0 0 12px 2px #43a047, 0 0 2px 1px #fff; border-color: #388e3c; } /* CB OFF (GREEN) */
+        .lamp.on#lampH4 { background: #fff; box-shadow: 0 0 12px 2px #fff, 0 0 2px 1px #bbb; border-color: #bbb; } /* TC Healthy (WHITE) */
+        .lamp.on#lampH2 { background: #ffb300; box-shadow: 0 0 12px 2px #ffb300, 0 0 2px 1px #fff; border-color: #ffb300; } /* K86 Latched (AMBER) */
+        .lamp.on#lampH111 { background: #d32f2f; box-shadow: 0 0 12px 2px #d32f2f, 0 0 2px 1px #fff; border-color: #b71c1c; } /* DC OK (RED) */
+        .lamp.on#lampH7 { background: #d32f2f; box-shadow: 0 0 12px 2px #d32f2f, 0 0 2px 1px #fff; border-color: #b71c1c; } /* R Ph (RED) */
+        .lamp.on#lampH8 { background: #ffd600; box-shadow: 0 0 12px 2px #ffd600, 0 0 2px 1px #fff; border-color: #ffd600; } /* Y Ph (YELLOW) */
+        .lamp.on#lampH9 { background: #1976d2; box-shadow: 0 0 12px 2px #1976d2, 0 0 2px 1px #fff; border-color: #1976d2; } /* B Ph (BLUE) */
+        .pt-voltage-label {
+            margin-bottom: 3px;
+            font-weight: 600;
+            font-size: 1em;
+            color: var(--header-color);
+        }
+        .status-group p {
+            font-size: 1em;
+            margin: 2px 0 2px 0;
+            color: var(--label-color);
+        }
+        #statusText, #springStatus, #cbStateText, #k86StateText, #kdcStateText, #dcFailAlarmText, #interlockStatusText {
+            font-size: 1em;
+            padding: 2px 6px;
+            margin-top: 4px;
+            border-radius: 4px;
+            background: #f1f8e9;
+            color: #222;
+            font-weight: 500;
+        }
+        #dcFailAlarmText.active {
+            background: #ffebee;
+            color: #b71c1c;
+            font-weight: 700;
+        }
+        .interlock-group-label {
+            font-size: 1em;
+            font-weight: 600;
+            color: var(--header-color);
+            margin: 8px 0 4px 0;
+        }
+        @media (max-width: 1400px) {
+            .schematic { width: 700px; height: 480px; }
+            #schematicCanvas { width: 700px; height: 480px; }
+            .controls, .indicators { width: 180px; padding: 10px 6px; }
+        }
+        @media (max-width: 1100px) {
+            .simulation-area { flex-direction: column; align-items: center; gap: 18px; }
+            .schematic { margin: 0 auto; }
+        }
+        @media (max-width: 900px) {
+            .schematic { width: 98vw; height: 320px; }
+            #schematicCanvas { width: 98vw; height: 320px; }
+            .controls, .indicators { width: 98vw; min-width: 0; }
+        }
+        [title]:hover::after {
+            content: attr(title);
+            position: absolute;
+            bottom: 115%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--tooltip-bg);
+            color: #fff;
+            padding: 7px 14px;
+            border-radius: 6px;
+            font-size: 0.98em;
+            white-space: nowrap;
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s 0.1s ease-in-out;
+        }
+        [title]:hover:hover::after { opacity: 1; }
+        ::selection { background: #b3e5fc; }
+    </style>
+</head>
+<body>
+    <h1>11kV Incomer Simulation</h1>
+     <!-- HTML Layout (Unchanged) -->
+    <div class="simulation-area">
+        <div class="controls">
+            <h2>Controls</h2>
+            <button id="toggleK1Btn" title="Toggle K1 relay state (sends pulse ON)">Toggle Remote Close (K1)</button>
+            <button id="tripBtn" title="Manual trip via S2 switch">Manual Trip (S2)</button>
+            <button id="faultBtn" title="Simulate protection trip via P127/K64 to K86">Simulate Prot. Trip (K86)</button>
+            <button id="resetBtn" title="Reset trip relay K86">Reset K86 Relay</button>
+            <hr>
+            <button id="dcToggleBtn" title="Toggle DC power supply">Toggle DC Power</button>
+            <hr>
+            <div class="interlock-group-label">Closing Interlocks:</div>
+            <button id="toggleTcsBtn" class="small" title="Toggle trip coil supervision status (KTC)">Toggle Trip Coil Sup. (KTC)</button>
+            <button id="toggleServiceBtn" class="small" title="Toggle breaker service position">Toggle Service Pos</button>
+            <button id="toggleBusEarthBtn" class="small" title="Toggle bus earthing status">Toggle Bus Earthed</button>
+            <button id="toggleBusVBtn" class="small" title="Toggle bus voltage healthy status">Toggle Bus V Healthy</button>
+            <button id="toggleBCCBtn" class="small" title="Toggle bus coupler interlock">Toggle B/C Interlock</button>
+            <hr>
+            <div class="interlock-group-label">Direct Trip Inputs (TC1):</div>
+            <button id="tripK2Btn" class="small trip" title="Simulate remote trip via K2">Remote Trip (K2)</button>
+            <button id="tripKtBtn" class="small trip" title="Simulate bus coupler KT trip">B/C KT Trip</button>
+            <button id="tripSyncBtn" class="small trip" title="Simulate bus coupler sync trip">B/C Sync Trip</button>
+            <button id="tripUVBtn" class="small trip" title="Simulate undervoltage trip (P127 RL4)">UV Trip (P127)</button>
+            <button id="tripBFBtn" class="small trip" title="Simulate breaker fail trip (50BF)">Breaker Fail Trip</button>
+            <hr>
+            <div class="interlock-group-label">PT Status:</div>
+            <button id="ptFailRBtn" class="small" title="Toggle R phase PT status">Toggle R Phase</button>
+            <button id="ptFailYBtn" class="small" title="Toggle Y phase PT status">Toggle Y Phase</button>
+            <button id="ptFailBBtn" class="small" title="Toggle B phase PT status">Toggle B Phase</button>
+            <hr>
+            <button id="resetSimulationBtn" title="Reset entire simulation to default state">Reset Simulation</button>
+            <hr>
+            <p>Status: <span id="statusText">Init...</span></p>
+            <p>Spring: <span id="springStatus">Charged</span></p>
+            <p>CB State: <span id="cbStateText">OPEN</span></p>
+            <p>K86 State: <span id="k86StateText">RESET</span></p>
+            <p>KDC State: <span id="kdcStateText">ENERGIZED</></p>
+            <p><span id="dcFailAlarmText">! DC SUPPLY FAIL !</span></p>
+            <p>Closing ILKs: <span id="interlockStatusText"></span></p>
+        </div>
+        <div class="schematic">
+            <canvas id="schematicCanvas" width="1150" height="800"></canvas> <!-- Canvas Dimensions -->
+        </div>
+        <div class="indicators">
+             <h2>Indicators</h2>
+             <div class="lamp-container"><div class="lamp" id="lampH3"></div><span>CB ON (RED)</span></div>
+             <div class="lamp-container"><div class="lamp" id="lampH1"></div><span>CB OFF (GREEN)</span></div>
+             <div class="lamp-container"><div class="lamp" id="lampH4"></div><span>TC Healthy (WHITE)</span></div>
+             <div class="lamp-container"><div class="lamp" id="lampH2"></div><span>K86 Latched (AMBER)</span></div>
+             <div class="lamp-container"><div class="lamp" id="lampH111"></div><span>DC OK (RED)</span></div>
+             <p class="pt-voltage-label">PT Voltage:</p>
+             <p class="pt-voltage-label">PT Voltage:</p>
+             <div class="lamp-container"><div class="lamp" id="lampH7"></div><span>R Ph (RED)</span></div>
+             <div class="lamp-container"><div class="lamp" id="lampH8"></div><span>Y Ph (YELLOW)</span></div>
+             <div class="lamp-container"><div class="lamp" id="lampH9"></div><span>B Ph (BLUE)</span></div>
+        </div>
+    </div>
+    <script>
+        // --- Constants ---
+        const CANVAS_WIDTH = 1150; const CANVAS_HEIGHT = 800; const POWER_CIRCUIT_WIDTH = 200; const CONTROL_CIRCUIT_X_START = POWER_CIRCUIT_WIDTH + 70; const BUS_Y_TOP = 50; const BUS_Y_BOTTOM = CANVAS_HEIGHT - 50; const BUS_X_START = 20; const BUS_X_END = CANVAS_WIDTH - 20; const CCOL_WIDTH = 180; const CCOL1_X = CONTROL_CIRCUIT_X_START + CCOL_WIDTH * 0.5; const CCOL2_X = CONTROL_CIRCUIT_X_START + CCOL_WIDTH * 1.5; const CCOL3_X = CONTROL_CIRCUIT_X_START + CCOL_WIDTH * 2.5; const CCOL4_X = CONTROL_CIRCUIT_X_START + CCOL_WIDTH * 3.5; const CCOL5_X = CONTROL_CIRCUIT_X_START + CCOL_WIDTH * 4.5; const COMP_HEIGHT = 16; const V_SPACE = 35; const COLOR_WIRE = '#A0A0A0'; const COLOR_WIRE_ENERGIZED = '#FF8C00'; const COLOR_COIL = '#606060'; const COLOR_COIL_ENERGIZED = '#FF8C00'; const COLOR_CONTACT_CLOSED = '#00A000'; const COLOR_CONTACT_OPEN = '#E53935'; const COLOR_LABEL = '#212121'; const COLOR_K86_RESET = '#A5D6A7'; const COLOR_K86_LATCHED = '#FFB74D'; const COLOR_K94_DEENERGIZED = '#E0E0E0'; const COLOR_K94_ENERGIZED = '#FFCDD2'; const COLOR_KDC_ENERGIZED = '#A5D6A7'; const COLOR_KDC_DEENERGIZED = '#BDBDBD'; const COLOR_CB_OPEN = '#81D4FA'; const COLOR_CB_CLOSED = '#EF5350'; const COLOR_POWER_BUS = '#C62828'; const COLOR_DC_POS = '#D32F2F'; const COLOR_DC_NEG = '#1976D2'; const CONTROL_BUS_X_START = CONTROL_CIRCUIT_X_START - 15; const CONTROL_BUS_X_END = BUS_X_END - 15;
+
+        // --- DOM Elements ---
+        const canvas = document.getElementById('schematicCanvas');
+        const ctx = canvas?.getContext('2d') || null;
+        const elements = { toggleK1Btn: document.getElementById('toggleK1Btn'), tripBtn: document.getElementById('tripBtn'), faultBtn: document.getElementById('faultBtn'), resetBtn: document.getElementById('resetBtn'), dcToggleBtn: document.getElementById('dcToggleBtn'), toggleTcsBtn: document.getElementById('toggleTcsBtn'), toggleServiceBtn: document.getElementById('toggleServiceBtn'), toggleBusEarthBtn: document.getElementById('toggleBusEarthBtn'), toggleBusVBtn: document.getElementById('toggleBusVBtn'), toggleBCCBtn: document.getElementById('toggleBCCBtn'), ptFailRBtn: document.getElementById('ptFailRBtn'), ptFailYBtn: document.getElementById('ptFailYBtn'), ptFailBBtn: document.getElementById('ptFailBBtn'), tripK2Btn: document.getElementById('tripK2Btn'), tripKtBtn: document.getElementById('tripKtBtn'), tripSyncBtn: document.getElementById('tripSyncBtn'), tripUVBtn: document.getElementById('tripUVBtn'), tripBFBtn: document.getElementById('tripBFBtn'), lampH3: document.getElementById('lampH3'), lampH1: document.getElementById('lampH1'), lampH4: document.getElementById('lampH4'), lampH2: document.getElementById('lampH2'), lampH111: document.getElementById('lampH111'), lampH7: document.getElementById('lampH7'), lampH8: document.getElementById('lampH8'), lampH9: document.getElementById('lampH9'), statusText: document.getElementById('statusText'), springStatus: document.getElementById('springStatus'), cbStateText: document.getElementById('cbStateText'), k86StateText: document.getElementById('k86StateText'), kdcStateText: document.getElementById('kdcStateText'), dcFailAlarmText: document.getElementById('dcFailAlarmText'), interlockStatusText: document.getElementById('interlockStatusText'), resetSimulationBtn: document.getElementById('resetSimulationBtn') };
+
+        // --- Initial Simulation State ---
+        const initialState = Object.freeze({ breakerState: 'OPEN', k86State: 'RESET', kdcState: 'ENERGIZED', springCharged: true, dcOk: true, dcFailAlarm: false, pt_ok_R: true, pt_ok_Y: true, pt_ok_B: true, operationInProgress: false, tcHealthy: true, ktcState: 'ENERGIZED', remoteCloseCommandActive: false, k1_relay_energized: false, k1State: 'DE-ENERGIZED', breakerInService: true, busNotEarthed: true, busVoltageHealthy: true, buscouplerInterlockClosed: true, k94State: 'DE-ENERGIZED', tripPathActiveManualS2: false, tripPathActiveK2: false, tripPathActiveKT: false, tripPathActiveSync: false, tripPathActiveUV: false, tripPathActiveBF: false, tripPathActiveK86Coil: false, tripPathActiveTC1: false, tripPathActiveK86_NO: false });
+        let state = { ...initialState }; // Mutable state
+
+        // --- Drawing Helpers ---
+        function drawLine(x1, y1, x2, y2, energized, color = COLOR_WIRE, width = 1.5) { if(!ctx) return; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.strokeStyle = energized ? COLOR_WIRE_ENERGIZED : color; ctx.lineWidth = energized ? width + 1 : width; ctx.stroke(); ctx.lineWidth = 1; }
+        function drawContact(x, y, label, isOpen, isNormallyOpen = true, energized = false) { if(!ctx) return; const length = 20; const gap = 5; ctx.font = '10px sans-serif'; ctx.fillStyle = COLOR_LABEL; ctx.textAlign = 'left'; ctx.fillText(label, x + length + 6, y + COMP_HEIGHT / 2 + 4); drawLine(x - length / 2, y + COMP_HEIGHT / 2, x, y + COMP_HEIGHT / 2, energized); drawLine(x + length, y + COMP_HEIGHT / 2, x + length + length / 2, y + COMP_HEIGHT / 2, energized); ctx.beginPath(); ctx.strokeStyle = energized && !isOpen ? COLOR_CONTACT_CLOSED : (energized && isOpen ? COLOR_CONTACT_OPEN : '#555'); ctx.lineWidth = 1.8; ctx.moveTo(x, y); ctx.lineTo(x, y + COMP_HEIGHT); if (isNormallyOpen) { if (isOpen) { ctx.moveTo(x + gap, y); ctx.lineTo(x + length, y + COMP_HEIGHT / 2); } else { ctx.moveTo(x, y + COMP_HEIGHT / 2); ctx.lineTo(x + length, y + COMP_HEIGHT / 2); } } else { if (isOpen) { ctx.moveTo(x + gap, y + COMP_HEIGHT / 2); ctx.lineTo(x + length, y + COMP_HEIGHT); } else { ctx.moveTo(x, y + COMP_HEIGHT / 2); ctx.lineTo(x + length, y + COMP_HEIGHT / 2); ctx.moveTo(x + gap, y); ctx.lineTo(x + length, y + COMP_HEIGHT); } } ctx.stroke(); ctx.lineWidth = 1; }
+        function drawCoil(x, y, label, energized) { if(!ctx) return; const radius = COMP_HEIGHT / 2 + 1; ctx.beginPath(); ctx.arc(x, y + radius, radius, 0, Math.PI * 2); ctx.fillStyle = energized ? COLOR_COIL_ENERGIZED : COLOR_COIL; ctx.fill(); ctx.strokeStyle = '#000'; ctx.stroke(); ctx.font = 'bold 11px sans-serif'; ctx.fillStyle = COLOR_LABEL; ctx.textAlign = 'center'; ctx.fillText(label, x, y + COMP_HEIGHT + 14); }
+        function drawMCB(x, y, label, closed, energized = false) { if(!ctx) return; const width = 16; const height = 28; ctx.strokeStyle = energized ? COLOR_WIRE_ENERGIZED : '#333'; ctx.lineWidth = 1.8; ctx.strokeRect(x - width / 2, y, width, height); ctx.beginPath(); ctx.moveTo(x - width / 2, y + (closed ? 6 : height / 2)); ctx.lineTo(x + width / 2, y + (closed ? height - 6 : height / 2)); ctx.strokeStyle = closed ? COLOR_CONTACT_CLOSED : COLOR_CONTACT_OPEN; ctx.stroke(); ctx.font = '11px sans-serif'; ctx.fillStyle = COLOR_LABEL; ctx.textAlign = 'center'; ctx.fillText(label, x, y - 6); ctx.lineWidth = 1; }
+        function drawBus(y, label, color = '#333', x_start = BUS_X_START, x_end = BUS_X_END) { if(!ctx) return; ctx.fillStyle = color; ctx.fillRect(x_start, y - 4, x_end - x_start, 8); ctx.font = 'bold 13px sans-serif'; ctx.fillStyle = COLOR_LABEL; ctx.textAlign = 'left'; ctx.fillText(label, x_start + 8, y - 10); }
+        function drawBreakerSymbol(x, y, stateObj, isPowerCircuit = false) { if(!ctx) return; const width = isPowerCircuit ? 55 : 32; const height = isPowerCircuit ? 85 : 55; ctx.strokeStyle = 'black'; ctx.lineWidth = isPowerCircuit ? 3.5 : 2.5; ctx.strokeRect(x - width / 2, y, width, height); ctx.fillStyle = 'black'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText("CB", x, y - 10); const contactYtop = y + 6; const contactYbottom = y + height - 6; const contactMidGap = 6; ctx.lineWidth = isPowerCircuit ? 5.5 : 4.5; if (stateObj.breakerState === 'CLOSED') { ctx.strokeStyle = COLOR_CB_CLOSED; ctx.beginPath(); ctx.moveTo(x, contactYtop); ctx.lineTo(x, contactYbottom); ctx.stroke(); } else { ctx.strokeStyle = COLOR_CB_OPEN; ctx.beginPath(); ctx.moveTo(x, contactYtop); ctx.lineTo(x, y + height / 2 - contactMidGap); ctx.moveTo(x, y + height / 2 + contactMidGap); ctx.lineTo(x, contactYbottom); ctx.stroke(); } ctx.lineWidth = 1; }
+        function drawGenericBox(x, y, w, h, label, fillStyle = '#EFEFEF') { if(!ctx) return; ctx.fillStyle = fillStyle; ctx.fillRect(x, y, w, h); ctx.strokeStyle = '#555'; ctx.lineWidth = 1.2; ctx.strokeRect(x, y, w, h); ctx.fillStyle = COLOR_LABEL; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(label, x + w / 2, y + h / 2 + 4); }
+        function drawTextLabel(x, y, text, align = 'center', font = '11px sans-serif', color = COLOR_LABEL, energized = false) { if (!ctx) return; ctx.font = font; ctx.fillStyle = energized ? COLOR_WIRE_ENERGIZED : color; ctx.textAlign = align; ctx.fillText(text, x, y); }
+
+        // --- Main Drawing Function ---
+        function drawSchematic() {
+             if (!ctx) { console.error("Cannot draw - Canvas context is missing."); return; }
+             console.log("DrawSchematic Start...");
+             try {
+                ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+                ctx.fillStyle = 'rgba(0, 255, 0, 0.3)'; ctx.fillRect(5, 5, 10, 10); // Debug rect START (Green, semi-transparent)
+
+                // --- Power Circuit Area ---
+                console.log("Drawing Power Cct...");
+                const PC_X_CENTER = POWER_CIRCUIT_WIDTH / 2; const PC_BUS_Y_TOP = BUS_Y_TOP + 60; const PC_BUS_Y_BOTTOM = BUS_Y_BOTTOM - 60; const PC_CB_Y = (PC_BUS_Y_TOP + PC_BUS_Y_BOTTOM) / 2 - 42;
+                ctx.textAlign = 'center'; ctx.font = 'bold 15px sans-serif'; ctx.fillStyle = '#444'; ctx.fillText("Power Circuit", PC_X_CENTER, BUS_Y_TOP + 10);
+                ctx.strokeStyle = COLOR_POWER_BUS; ctx.lineWidth = 4.5; ctx.beginPath(); ctx.moveTo(PC_X_CENTER - 45, PC_BUS_Y_TOP); ctx.lineTo(PC_X_CENTER + 45, PC_BUS_Y_TOP); ctx.stroke(); ctx.fillText("11kV Bus IN", PC_X_CENTER, PC_BUS_Y_TOP - 20); ctx.fillText("R, Y, B", PC_X_CENTER, PC_BUS_Y_TOP + 20);
+                const PT_W = 50; const PT_H = 35; const PT_Y = PC_BUS_Y_TOP + 30; drawGenericBox(PC_X_CENTER - PT_W / 2, PT_Y, PT_W, PT_H, "Line PT"); drawLine(PC_X_CENTER, PC_BUS_Y_TOP, PC_X_CENTER, PT_Y, true, COLOR_POWER_BUS, 3.5);
+                drawBreakerSymbol(PC_X_CENTER, PC_CB_Y, state, true);
+                drawLine(PC_X_CENTER, PT_Y + PT_H + 10, PC_X_CENTER, PC_CB_Y, state.breakerState === 'CLOSED', COLOR_POWER_BUS, 3.5); drawLine(PC_X_CENTER, PC_CB_Y + 85, PC_X_CENTER, PC_BUS_Y_BOTTOM, state.breakerState === 'CLOSED', COLOR_POWER_BUS, 3.5);
+                ctx.beginPath(); ctx.moveTo(PC_X_CENTER - 45, PC_BUS_Y_BOTTOM); ctx.lineTo(PC_X_CENTER + 45, PC_BUS_Y_BOTTOM); ctx.stroke(); ctx.fillText("11kV Load", PC_X_CENTER, PC_BUS_Y_BOTTOM + 30); ctx.lineWidth = 1;
+
+
+                // --- Control Circuit Area ---
+                console.log("Drawing Control Buses...");
+                drawBus(BUS_Y_TOP, "DC +", COLOR_DC_POS, CONTROL_BUS_X_START, CONTROL_BUS_X_END);
+                drawBus(BUS_Y_BOTTOM, "DC -", COLOR_DC_NEG, CONTROL_BUS_X_START, CONTROL_BUS_X_END);
+
+                let currentY, y, pathEnergized;
+
+                // --- Closing Circuit (Col 1) ---
+                 console.log("Drawing Closing Cct...");
+                 ctx.textAlign = 'center'; ctx.font = 'bold 13px sans-serif'; ctx.fillStyle = '#444'; ctx.fillText("Closing Circuit", CCOL1_X, BUS_Y_TOP - 20);
+                 pathEnergized = state.dcOk; y = BUS_Y_TOP + V_SPACE; drawMCB(CCOL1_X, y, "F4", state.dcOk, pathEnergized); drawLine(CCOL1_X, BUS_Y_TOP, CCOL1_X, y, pathEnergized, COLOR_DC_POS); currentY = y + 28;
+                 y = currentY + V_SPACE; let ktc_no_open = (state.ktcState !== 'ENERGIZED'); pathEnergized = pathEnergized && !ktc_no_open; drawContact(CCOL1_X, y - COMP_HEIGHT / 2, "KTC NO(TC OK)", ktc_no_open, true, pathEnergized); drawLine(CCOL1_X, currentY, CCOL1_X, y - COMP_HEIGHT / 2, state.dcOk); currentY = y + COMP_HEIGHT / 2;
+                 y = currentY + V_SPACE; drawContact(CCOL1_X, y - COMP_HEIGHT / 2, "S6 Remote", false, false, pathEnergized); drawLine(CCOL1_X, currentY, CCOL1_X, y - COMP_HEIGHT / 2, pathEnergized); currentY = y + COMP_HEIGHT / 2;
+                 y = currentY + V_SPACE; let k1_no_open = (state.k1State !== 'ENERGIZED'); pathEnergized = pathEnergized && !k1_no_open; drawContact(CCOL1_X, y - COMP_HEIGHT / 2, "K1 NO", k1_no_open, true, pathEnergized); drawLine(CCOL1_X, currentY, CCOL1_X, y - COMP_HEIGHT / 2, pathEnergized || state.k1State === 'ENERGIZED'); currentY = y + COMP_HEIGHT / 2;
+                 y = currentY + V_SPACE; pathEnergized = pathEnergized && state.breakerInService; drawContact(CCOL1_X, y - COMP_HEIGHT / 2, "SR2 Svc", !state.breakerInService, true, pathEnergized); drawLine(CCOL1_X, currentY, CCOL1_X, y - COMP_HEIGHT / 2, pathEnergized || state.breakerInService); currentY = y + COMP_HEIGHT / 2;
+                 y = currentY + V_SPACE; pathEnergized = pathEnergized && state.busNotEarthed; drawContact(CCOL1_X, y - COMP_HEIGHT / 2, "Bus !Earth", !state.busNotEarthed, true, pathEnergized); drawLine(CCOL1_X, currentY, CCOL1_X, y - COMP_HEIGHT / 2, pathEnergized || state.busNotEarthed); currentY = y + COMP_HEIGHT / 2;
+                 y = currentY + V_SPACE; pathEnergized = pathEnergized && state.busVoltageHealthy; drawContact(CCOL1_X, y - COMP_HEIGHT / 2, "Bus V OK", !state.busVoltageHealthy, true, pathEnergized); drawLine(CCOL1_X, currentY, CCOL1_X, y - COMP_HEIGHT / 2, pathEnergized || state.busVoltageHealthy); currentY = y + COMP_HEIGHT / 2;
+                 y = currentY + V_SPACE; pathEnergized = pathEnergized && state.buscouplerInterlockClosed; drawContact(CCOL1_X, y - COMP_HEIGHT / 2, "B/C NC", !state.buscouplerInterlockClosed, false, pathEnergized); drawLine(CCOL1_X, currentY, CCOL1_X, y - COMP_HEIGHT / 2, pathEnergized || state.buscouplerInterlockClosed); currentY = y + COMP_HEIGHT / 2;
+                 y = currentY + V_SPACE; let k86_nc_open = (state.k86State === 'LATCHED'); pathEnergized = pathEnergized && !k86_nc_open; drawContact(CCOL1_X, y - COMP_HEIGHT / 2, "K86 NC", k86_nc_open, false, pathEnergized); drawLine(CCOL1_X, currentY, CCOL1_X, y - COMP_HEIGHT / 2, pathEnergized || !k86_nc_open); currentY = y + COMP_HEIGHT / 2;
+                 y = currentY + V_SPACE; let k94_nc_open = (state.k94State === 'ENERGIZED'); pathEnergized = pathEnergized && !k94_nc_open; drawContact(CCOL1_X, y - COMP_HEIGHT / 2, "K94 NC", k94_nc_open, false, pathEnergized); drawLine(CCOL1_X, currentY, CCOL1_X, y - COMP_HEIGHT / 2, pathEnergized || !k94_nc_open); currentY = y + COMP_HEIGHT / 2;
+                 y = currentY + V_SPACE; let cb_nc_open = (state.breakerState === 'CLOSED'); pathEnergized = pathEnergized && !cb_nc_open; drawContact(CCOL1_X, y - COMP_HEIGHT / 2, "52b NC", cb_nc_open, false, pathEnergized); drawLine(CCOL1_X, currentY, CCOL1_X, y - COMP_HEIGHT / 2, pathEnergized || !cb_nc_open); currentY = y + COMP_HEIGHT / 2;
+                 y = currentY + V_SPACE; pathEnergized = pathEnergized && state.springCharged; drawTextLabel(CCOL1_X, y + 4, `Spring ${state.springCharged? 'Charged':'Not Ch.'}`, 'center', 'bold 10px sans-serif', state.springCharged ? COLOR_CONTACT_CLOSED : COLOR_CONTACT_OPEN, pathEnergized); drawLine(CCOL1_X, currentY, CCOL1_X, y - COMP_HEIGHT / 2, pathEnergized || state.springCharged); currentY = y + COMP_HEIGHT / 2;
+                 y = currentY + V_SPACE; let ccEnergized = pathEnergized && state.breakerState === 'CLOSING'; drawCoil(CCOL1_X, y - COMP_HEIGHT / 2, "CC", ccEnergized); drawLine(CCOL1_X, currentY, CCOL1_X, y - COMP_HEIGHT / 2, pathEnergized);
+                 let f5_cc_y = y + V_SPACE; drawMCB(CCOL1_X, f5_cc_y, "F5(CC)", state.dcOk, ccEnergized); drawLine(CCOL1_X, y + COMP_HEIGHT / 2, CCOL1_X, f5_cc_y, ccEnergized); drawLine(CCOL1_X, f5_cc_y + 28, CCOL1_X, BUS_Y_BOTTOM, ccEnergized, COLOR_DC_NEG);
+
+                // --- Tripping Circuit (Col 2) ---
+                 console.log("Drawing Tripping Cct...");
+                 ctx.textAlign = 'center'; ctx.font = 'bold 13px sans-serif'; ctx.fillStyle = '#444'; ctx.fillText("Tripping Circuit", CCOL2_X, BUS_Y_TOP - 20);
+                 y = BUS_Y_TOP + V_SPACE; state.tripPathActiveK86_NO = (state.k86State === 'LATCHED'); let anyDirectTripInputActive = (state.tripPathActiveManualS2 || state.tripPathActiveK2 || state.tripPathActiveKT || state.tripPathActiveSync || state.tripPathActiveUV || state.tripPathActiveBF || state.tripPathActiveK86_NO); let tripInitialPath = state.dcOk && anyDirectTripInputActive;
+                 drawMCB(CCOL2_X, y, "F6", state.dcOk, tripInitialPath); drawLine(CCOL2_X, BUS_Y_TOP, CCOL2_X, y, tripInitialPath, COLOR_DC_POS); currentY = y + 28;
+                 let contactY = currentY + V_SPACE * 0.4; const contactX = CCOL2_X; const contactSpacing = V_SPACE * 0.9; let anyTripInputActive = false;
+                 drawLine(contactX, currentY, contactX, contactY + contactSpacing * 6.5, tripInitialPath);
+                 drawContact(contactX, contactY, "K2 Rmt", !state.tripPathActiveK2, true, state.tripPathActiveK2); if(state.tripPathActiveK2) anyTripInputActive=true; contactY += contactSpacing;
+                 drawContact(contactX, contactY, "B/C KT", !state.tripPathActiveKT, true, state.tripPathActiveKT); if(state.tripPathActiveKT) anyTripInputActive=true; contactY += contactSpacing;
+                 drawContact(contactX, contactY, "B/C Sync", !state.tripPathActiveSync, true, state.tripPathActiveSync); if(state.tripPathActiveSync) anyTripInputActive=true; contactY += contactSpacing;
+                 drawContact(contactX, contactY, "S2 Trip", !state.tripPathActiveManualS2, true, state.tripPathActiveManualS2); if(state.tripPathActiveManualS2) anyTripInputActive=true; contactY += contactSpacing;
+                 drawContact(contactX, contactY, "P127 UV", !state.tripPathActiveUV, true, state.tripPathActiveUV); if(state.tripPathActiveUV) anyTripInputActive=true; contactY += contactSpacing;
+                 drawContact(contactX, contactY, "50BF", !state.tripPathActiveBF, true, state.tripPathActiveBF); if(state.tripPathActiveBF) anyTripInputActive=true; contactY += contactSpacing;
+                 drawContact(contactX, contactY, "K86 NO", !state.tripPathActiveK86_NO, true, state.tripPathActiveK86_NO); if(state.tripPathActiveK86_NO) anyTripInputActive=true;
+                 let commonOutY = contactY + COMP_HEIGHT / 2; drawLine(contactX, commonOutY - contactSpacing * 6.5, contactX, commonOutY, anyTripInputActive); currentY = commonOutY + V_SPACE * 0.5;
+                 y = currentY + V_SPACE * 0.5; let cb_a_open = (state.breakerState !== 'CLOSED'); let pathAfterParallel = state.dcOk && anyTripInputActive; drawContact(contactX, y - COMP_HEIGHT / 2, "52a NO", cb_a_open, true, pathAfterParallel && !cb_a_open); drawLine(contactX, currentY, contactX, y - COMP_HEIGHT / 2, pathAfterParallel); currentY = y + COMP_HEIGHT / 2; pathEnergized = pathAfterParallel && !cb_a_open;
+                 y = currentY + V_SPACE; state.tripPathActiveTC1 = pathEnergized; drawCoil(contactX, y - COMP_HEIGHT / 2, "TC1", state.tripPathActiveTC1); drawLine(contactX, currentY, contactX, y - COMP_HEIGHT / 2, pathEnergized); currentY = y + COMP_HEIGHT / 2;
+                 y = currentY + V_SPACE * 0.5; drawMCB(contactX, y, "F7", state.dcOk, state.tripPathActiveTC1); drawLine(contactX, currentY, contactX, y, state.tripPathActiveTC1); drawLine(contactX, y + 28, contactX, BUS_Y_BOTTOM, state.tripPathActiveTC1, COLOR_DC_NEG);
+
+                // --- K86 Circuit (Col 3) ---
+                 console.log("Drawing K86 Cct...");
+                 ctx.textAlign = 'center'; ctx.font = 'bold 13px sans-serif'; ctx.fillStyle = '#444'; ctx.fillText("K86 Circuit", CCOL3_X, BUS_Y_TOP - 20);
+                 y = BUS_Y_TOP + V_SPACE; let k86PathStartActive = state.dcOk && state.tripPathActiveK86Coil; drawMCB(CCOL3_X, y, "F8", state.dcOk, k86PathStartActive); drawLine(CCOL3_X, BUS_Y_TOP, CCOL3_X, y, k86PathStartActive, COLOR_DC_POS); currentY = y + 28;
+                 y = currentY + V_SPACE * 0.8; let k86InputPathActive = state.dcOk && state.tripPathActiveK86Coil; const k86InputX = CCOL3_X; const p127X = k86InputX - 20; const k64X = k86InputX + 20;
+                 drawLine(k86InputX, currentY, k86InputX, y, k86InputPathActive); drawLine(k86InputX, y, p127X, y, k86InputPathActive); drawLine(k86InputX, y, k64X, y, k86InputPathActive);
+                 drawContact(p127X, y, "P127 RL1", !state.tripPathActiveK86Coil, true, k86InputPathActive); drawContact(k64X, y, "K64 REF", !state.tripPathActiveK86Coil, true, k86InputPathActive);
+                 let k86CombineY = y + COMP_HEIGHT + 10; drawLine(p127X, y + COMP_HEIGHT, p127X, k86CombineY, k86InputPathActive); drawLine(k64X, y + COMP_HEIGHT, k64X, k86CombineY, k86InputPathActive); drawLine(p127X, k86CombineY, k64X, k86CombineY, k86InputPathActive); currentY = k86CombineY;
+                 y = currentY + V_SPACE * 0.8; let k86CoilEnergized = k86InputPathActive; drawCoil(k86InputX, y - COMP_HEIGHT / 2, "K86 Coil", k86CoilEnergized); drawLine(k86InputX, currentY, k86InputX, y- COMP_HEIGHT / 2, k86CoilEnergized); drawLine(k86InputX, y + COMP_HEIGHT / 2, k86InputX, BUS_Y_BOTTOM, k86CoilEnergized, COLOR_DC_NEG);
+
+                // --- K1 / Aux Relays (Col 4) --- Moved K1 Here
+                 console.log("Drawing K1/Aux Relays...");
+                 ctx.textAlign = 'center'; ctx.font = 'bold 13px sans-serif'; ctx.fillStyle = '#444'; ctx.fillText("K1 / Aux Relays", CCOL4_X, BUS_Y_TOP - 20);
+                 currentY = BUS_Y_TOP + V_SPACE; // Reset Y for this column
+                 const K1_COIL_Y = currentY + V_SPACE; drawCoil(CCOL4_X, K1_COIL_Y - COMP_HEIGHT / 2, "K1 Coil", state.k1State === 'ENERGIZED'); drawContact(CCOL4_X, K1_COIL_Y - V_SPACE, "Remote Cmd", !state.remoteCloseCommandActive, true, state.dcOk && state.remoteCloseCommandActive); drawLine(CCOL4_X, BUS_Y_TOP, CCOL4_X, K1_COIL_Y - V_SPACE, state.dcOk && state.remoteCloseCommandActive, COLOR_DC_POS); drawLine(CCOL4_X, K1_COIL_Y - V_SPACE + COMP_HEIGHT, CCOL4_X, K1_COIL_Y - COMP_HEIGHT / 2, state.dcOk && state.remoteCloseCommandActive); drawLine(CCOL4_X, K1_COIL_Y + COMP_HEIGHT / 2, CCOL4_X, BUS_Y_BOTTOM, state.k1State === 'ENERGIZED', COLOR_DC_NEG); currentY = K1_COIL_Y + COMP_HEIGHT/2 + V_SPACE;
+                 const KTC_COIL_Y = currentY; drawCoil(CCOL4_X, KTC_COIL_Y - COMP_HEIGHT / 2, "KTC Coil", state.ktcState === 'ENERGIZED'); drawContact(CCOL4_X, KTC_COIL_Y - V_SPACE, "P127 RL2", !state.tcHealthy, true, state.dcOk && state.tcHealthy); drawLine(CCOL4_X, BUS_Y_TOP, CCOL4_X, KTC_COIL_Y - V_SPACE, state.dcOk && state.tcHealthy, COLOR_DC_POS); drawLine(CCOL4_X, KTC_COIL_Y - V_SPACE + COMP_HEIGHT, CCOL4_X, KTC_COIL_Y - COMP_HEIGHT / 2, state.dcOk && state.tcHealthy); drawLine(CCOL4_X, KTC_COIL_Y + COMP_HEIGHT / 2, CCOL4_X, BUS_Y_BOTTOM, state.ktcState === 'ENERGIZED', COLOR_DC_NEG); currentY += V_SPACE * 2;
+                 const K94_COIL_Y = currentY; let k94CoilEnergized = (state.breakerState === 'CLOSED' && state.dcOk); drawCoil(CCOL4_X, K94_COIL_Y - COMP_HEIGHT / 2, "K94 Coil", k94CoilEnergized); drawContact(CCOL4_X, K94_COIL_Y - V_SPACE, "52a NO", state.breakerState !== 'CLOSED', true, k94CoilEnergized); drawLine(CCOL4_X, BUS_Y_TOP, CCOL4_X, K94_COIL_Y - V_SPACE, k94CoilEnergized, COLOR_DC_POS); drawLine(CCOL4_X, K94_COIL_Y - V_SPACE + COMP_HEIGHT, CCOL4_X, K94_COIL_Y - COMP_HEIGHT / 2, k94CoilEnergized); drawLine(CCOL4_X, K94_COIL_Y + COMP_HEIGHT / 2, CCOL4_X, BUS_Y_BOTTOM, k94CoilEnergized, COLOR_DC_NEG);
+
+                // --- KDC (Col 5) ---
+                 console.log("Drawing KDC...");
+                 ctx.textAlign = 'center'; ctx.font = 'bold 13px sans-serif'; ctx.fillStyle = '#444'; ctx.fillText("DC Supervision", CCOL5_X, BUS_Y_TOP - 20);
+                 const KDC_Y = BUS_Y_TOP + V_SPACE * 2; const KDC_W = 45; const KDC_H = 35; let kdcFill = state.kdcState === 'ENERGIZED' ? COLOR_KDC_ENERGIZED : COLOR_KDC_DEENERGIZED; drawGenericBox(CCOL5_X - KDC_W / 2, KDC_Y, KDC_W, KDC_H, "KDC", kdcFill); drawLine(CCOL5_X, BUS_Y_TOP, CCOL5_X, KDC_Y, state.dcOk, COLOR_DC_POS); drawLine(CCOL5_X, KDC_Y + KDC_H, CCOL5_X, BUS_Y_BOTTOM, state.dcOk, COLOR_DC_NEG); ctx.font = '10px sans-serif'; ctx.fillStyle = COLOR_LABEL; ctx.textAlign = 'center'; ctx.fillText("(DC Fail Relay)", CCOL5_X, KDC_Y + KDC_H + 14);
+
+
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.3)'; ctx.fillRect(15, 5, 10, 10); // Debug rect END (Red, semi-transparent)
+                ctx.textAlign = 'left'; // Reset alignment
+                console.log("DrawSchematic End.");
+
+            } catch (error) { console.error("Error during drawSchematic:", error); if(ctx) { ctx.fillStyle = "red"; ctx.font = "16px sans-serif"; ctx.textAlign = "center"; ctx.fillText("Error drawing. Check console.", CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2); } }
+        }
+
+        // --- Simulation Logic Functions ---
+        // (Logic functions mostly unchanged, adapted for 'state' object & new K1 toggle logic)
+        function updateStatus(message) { if (elements.statusText) elements.statusText.textContent = message; console.log(`Status: ${message}`); }
+        function checkClosingInterlocks() { let permissive = true; let failReason = []; if (!state.dcOk) { permissive = false; failReason.push("DC Off"); } if (state.ktcState !== 'ENERGIZED') { permissive = false; failReason.push("KTC Off(TC !OK)"); } if (state.k1State !== 'ENERGIZED') { permissive = false; failReason.push("K1 Off"); } if (!state.breakerInService) { permissive = false; failReason.push("Not Svc"); } if (!state.busNotEarthed) { permissive = false; failReason.push("Bus Earth"); } if (!state.busVoltageHealthy) { permissive = false; failReason.push("Bus V Low"); } if (!state.buscouplerInterlockClosed) { permissive = false; failReason.push("BC Open"); } if (state.k86State === 'LATCHED') { permissive = false; failReason.push("K86 Latch"); } if (state.k94State === 'ENERGIZED') { permissive = false; failReason.push("K94(AP)");} if (state.breakerState !== 'OPEN') { permissive = false; failReason.push("52b Open"); } if (!state.springCharged) { permissive = false; failReason.push("!Spring Ch."); } if (elements.interlockStatusText) { if (permissive) { elements.interlockStatusText.textContent = "OK"; elements.interlockStatusText.style.backgroundColor = "#c8e6c9"; } else { elements.interlockStatusText.textContent = "Block: " + failReason.join(', '); elements.interlockStatusText.style.backgroundColor = "#ffcdd2"; } } return permissive; }
+        function updateIndicators() { state.k94State = (state.breakerState === 'CLOSED' && state.dcOk) ? 'ENERGIZED' : 'DE-ENERGIZED'; elements.lampH3.classList.toggle('on', state.breakerState === 'CLOSED' && state.dcOk); elements.lampH1.classList.toggle('on', state.breakerState === 'OPEN' && state.dcOk); elements.lampH4.classList.toggle('on', state.tcHealthy && state.dcOk); elements.lampH2.classList.toggle('on', state.k86State === 'LATCHED' && state.dcOk); elements.lampH111.classList.toggle('on', state.dcOk); elements.lampH7.classList.toggle('on', state.pt_ok_R); elements.lampH8.classList.toggle('on', state.pt_ok_Y); elements.lampH9.classList.toggle('on', state.pt_ok_B); elements.springStatus.textContent = state.springCharged ? 'Charged' : (!state.dcOk ? 'Disch (DC OFF)' : 'Discharging...'); elements.cbStateText.textContent = state.breakerState; elements.k86StateText.textContent = state.k86State; elements.kdcStateText.textContent = state.kdcState; elements.dcFailAlarmText.classList.toggle('active', state.dcFailAlarm); checkClosingInterlocks(); let canTrip = !state.operationInProgress && state.breakerState === 'CLOSED' && state.dcOk; elements.tripBtn.disabled = !canTrip; elements.faultBtn.disabled = !canTrip; elements.tripK2Btn.disabled = !canTrip; elements.tripKtBtn.disabled = !canTrip; elements.tripSyncBtn.disabled = !canTrip; elements.tripUVBtn.disabled = !canTrip; elements.tripBFBtn.disabled = !canTrip; elements.resetBtn.disabled = state.operationInProgress || state.k86State === 'RESET' || !state.dcOk; elements.dcToggleBtn.disabled = state.operationInProgress; elements.toggleTcsBtn.disabled = state.operationInProgress; elements.toggleServiceBtn.disabled = state.operationInProgress; elements.toggleBusEarthBtn.disabled = state.operationInProgress; elements.toggleBusVBtn.disabled = state.operationInProgress; elements.toggleBCCBtn.disabled = state.operationInProgress; elements.ptFailRBtn.disabled = state.operationInProgress; elements.ptFailYBtn.disabled = state.operationInProgress; elements.ptFailBBtn.disabled = state.operationInProgress; elements.toggleK1Btn.disabled = state.operationInProgress; elements.toggleK1Btn.classList.toggle('active', state.k1_relay_energized); elements.resetSimulationBtn.disabled = state.operationInProgress; }
+        function rechargeSpring() { if (!state.springCharged && state.dcOk) { elements.springStatus.textContent = 'Charging...'; updateIndicators(); setTimeout(() => { if (state.dcOk) { state.springCharged = true; updateStatus('Spring Recharged'); updateIndicators(); drawSchematic(); } }, 1500); } else if (!state.springCharged && !state.dcOk) { elements.springStatus.textContent = 'Disch (DC OFF)'; updateIndicators(); } }
+        function checkAndAttemptClose() { if (checkClosingInterlocks()) { handleRemoteClose(); } else { updateStatus("Close Blocked! Interlocks not met."); state.remoteCloseCommandActive = false; /* End pulse if blocked */ state.operationInProgress = false; updateIndicators(); drawSchematic(); } }
+        function handleRemoteClose() { updateStatus("Closing Breaker..."); state.breakerState = 'CLOSING'; state.springCharged = false; updateIndicators(); drawSchematic(); setTimeout(() => { state.breakerState = 'CLOSED'; state.remoteCloseCommandActive = false; /* K1 may remain ON */ updateStatus("Breaker CLOSED via K1"); state.operationInProgress = false; updateIndicators(); drawSchematic(); rechargeSpring(); }, 600); }
+        function handleDirectTrip(tripSourceFlagName, reason) { if (state.operationInProgress || state.breakerState !== 'CLOSED' || !state.dcOk) return; state.operationInProgress = true; updateStatus(`Tripping Breaker (${reason})...`); state[tripSourceFlagName] = true; state.breakerState = 'TRIPPING'; updateIndicators(); drawSchematic(); setTimeout(() => { state[tripSourceFlagName] = false; state.breakerState = 'OPEN'; updateStatus(`Breaker TRIPPED (${reason})`); state.operationInProgress = false; updateIndicators(); drawSchematic(); }, 600); }
+        function handleProtectionTrip() { if (state.operationInProgress || state.breakerState !== 'CLOSED' || !state.dcOk) return; state.operationInProgress = true; updateStatus("Tripping Breaker (Prot. -> K86)..."); state.tripPathActiveK86Coil = true; state.k86State = 'LATCHED'; state.breakerState = 'TRIPPING'; state.tripPathActiveK86_NO = true; updateIndicators(); drawSchematic(); setTimeout(() => { state.tripPathActiveK86Coil = false; state.breakerState = 'OPEN'; updateStatus("Breaker TRIPPED (Prot) - K86 LATCHED"); state.operationInProgress = false; updateIndicators(); drawSchematic(); }, 800); }
+        function handleReset() { if (state.operationInProgress || state.k86State === 'RESET' || !state.dcOk) return; state.operationInProgress = true; state.k86State = 'RESET'; state.tripPathActiveK86Coil = false; state.tripPathActiveK86_NO = false; updateStatus("Trip Relay (K86) Reset"); updateIndicators(); drawSchematic(); setTimeout(() => { state.operationInProgress = false; updateIndicators(); }, 200); }
+        function handleDcToggle() { if (state.operationInProgress) return; state.operationInProgress = true; state.dcOk = !state.dcOk; updateStatus(`DC Power ${state.dcOk ? 'ON' : 'OFF'}`); state.kdcState = state.dcOk ? 'ENERGIZED' : 'DE-ENERGIZED'; state.dcFailAlarm = !state.dcOk; if (!state.dcOk) { state.k1_relay_energized = false; state.k1State = 'DE-ENERGIZED'; state.ktcState = 'DE-ENERGIZED'; state.remoteCloseCommandActive = false; Object.keys(state).forEach(key => { if (key.startsWith('tripPathActive')) state[key] = false; }); } updateIndicators(); drawSchematic(); if (state.dcOk) { rechargeSpring(); } else if (!state.springCharged) { elements.springStatus.textContent = 'Disch (DC OFF)'; } state.operationInProgress = false; }
+        function handlePtFail(phase) { if (state.operationInProgress) return; state.operationInProgress = true; let statusMsg = ""; switch (phase) { case 'R': state.pt_ok_R = !state.pt_ok_R; statusMsg = `PT R ${state.pt_ok_R ? 'OK' : 'Fail'}`; break; case 'Y': state.pt_ok_Y = !state.pt_ok_Y; statusMsg = `PT Y ${state.pt_ok_Y ? 'OK' : 'Fail'}`; break; case 'B': state.pt_ok_B = !state.pt_ok_B; statusMsg = `PT B ${state.pt_ok_B ? 'OK' : 'Fail'}`; break; } updateStatus(statusMsg); updateIndicators(); drawSchematic(); state.operationInProgress = false; }
+        function handleToggleTCS() { if (state.operationInProgress || !state.dcOk) return; state.operationInProgress = true; state.tcHealthy = !state.tcHealthy; state.ktcState = state.tcHealthy ? 'ENERGIZED' : 'DE-ENERGIZED'; updateStatus(`TC Supervision: ${state.tcHealthy ? 'OK' : 'FAIL'}. KTC: ${state.ktcState}`); updateIndicators(); drawSchematic(); state.operationInProgress = false; }
+        function handleToggleK1() { if (state.operationInProgress || !state.dcOk) return; state.operationInProgress = true; state.k1_relay_energized = !state.k1_relay_energized; state.k1State = state.k1_relay_energized ? 'ENERGIZED' : 'DE-ENERGIZED'; updateStatus(`K1 Relay Toggled: ${state.k1State}`); if (state.k1_relay_energized) { state.remoteCloseCommandActive = true; updateIndicators(); drawSchematic(); checkAndAttemptClose(); setTimeout(() => { state.remoteCloseCommandActive = false; state.operationInProgress = false; updateIndicators(); drawSchematic(); }, 250); } else { state.remoteCloseCommandActive = false; state.operationInProgress = false; updateIndicators(); drawSchematic(); } }
+        function handleToggleServicePos() { if (state.operationInProgress) return; state.operationInProgress = true; state.breakerInService = !state.breakerInService; updateStatus(`Service Pos: ${state.breakerInService ? 'SERVICE' : 'TEST/DRAWN'}`); updateIndicators(); drawSchematic(); state.operationInProgress = false; }
+        function handleToggleBusEarth() { if (state.operationInProgress) return; state.operationInProgress = true; state.busNotEarthed = !state.busNotEarthed; updateStatus(`Bus Earth: ${state.busNotEarthed ? 'Not Earthed' : 'EARTHED'}`); updateIndicators(); drawSchematic(); state.operationInProgress = false; }
+        function handleToggleBusVHealthy() { if (state.operationInProgress) return; state.operationInProgress = true; state.busVoltageHealthy = !state.busVoltageHealthy; updateStatus(`Bus Voltage: ${state.busVoltageHealthy ? 'Healthy' : 'LOW'}`); updateIndicators(); drawSchematic(); state.operationInProgress = false; }
+        function handleToggleBuscoupler() { if (state.operationInProgress) return; state.operationInProgress = true; state.buscouplerInterlockClosed = !state.buscouplerInterlockClosed; updateStatus(`BC Intlk NC: ${state.buscouplerInterlockClosed ? 'CLOSED' : 'OPEN'}`); updateIndicators(); drawSchematic(); state.operationInProgress = false; }
+        function resetSimulation() { if (state.operationInProgress) return; state.operationInProgress = true; updateStatus("Resetting Simulation to Initial State..."); state = { ...initialState }; state.ktcState = state.tcHealthy ? 'ENERGIZED' : 'DE-ENERGIZED'; updateIndicators(); drawSchematic(); setTimeout(() => { state.operationInProgress = false; updateStatus("System Ready"); updateIndicators(); }, 500); }
+
+        // --- Initialization ---
+        function init() { if (!ctx) { console.error("Canvas context not available for init"); return; } console.log("Initializing Simulation..."); state.kdcState = state.dcOk ? 'ENERGIZED' : 'DE-ENERGIZED'; state.dcFailAlarm = !state.dcOk; state.ktcState = state.tcHealthy ? 'ENERGIZED' : 'DE-ENERGIZED'; updateStatus("System Ready"); updateIndicators(); drawSchematic(); console.log("Initialization Complete."); }
+
+        // --- Event Listeners ---
+        elements.toggleK1Btn?.addEventListener('click', handleToggleK1); elements.tripBtn?.addEventListener('click', () => handleDirectTrip('tripPathActiveManualS2', 'Manual S2')); elements.faultBtn?.addEventListener('click', handleProtectionTrip); elements.resetBtn?.addEventListener('click', handleReset); elements.dcToggleBtn?.addEventListener('click', handleDcToggle); elements.ptFailRBtn?.addEventListener('click', () => handlePtFail('R')); elements.ptFailYBtn?.addEventListener('click', () => handlePtFail('Y')); elements.ptFailBBtn?.addEventListener('click', () => handlePtFail('B')); elements.toggleTcsBtn?.addEventListener('click', handleToggleTCS); elements.toggleServiceBtn?.addEventListener('click', handleToggleServicePos); elements.toggleBusEarthBtn?.addEventListener('click', handleToggleBusEarth); elements.toggleBusVBtn?.addEventListener('click', handleToggleBusVHealthy); elements.toggleBCCBtn?.addEventListener('click', handleToggleBuscoupler); elements.tripK2Btn?.addEventListener('click', () => handleDirectTrip('tripPathActiveK2', 'Remote K2')); elements.tripKtBtn?.addEventListener('click', () => handleDirectTrip('tripPathActiveKT', 'B/C KT')); elements.tripSyncBtn?.addEventListener('click', () => handleDirectTrip('tripPathActiveSync', 'B/C Sync')); elements.tripUVBtn?.addEventListener('click', () => handleDirectTrip('tripPathActiveUV', 'P127 UV')); elements.tripBFBtn?.addEventListener('click', () => handleDirectTrip('tripPathActiveBF', 'Breaker Fail'));
+        elements.resetSimulationBtn?.addEventListener('click', resetSimulation);
+
+        // --- Initialize ---
+        document.addEventListener('DOMContentLoaded', init);
+
+    </script>
+</body>
+</html>

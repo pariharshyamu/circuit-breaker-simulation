@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Changed Title -->
+    <title>Schneider HWX 11kV VCB Sim - Fixed</title>
+    <style>
+        /* --- Previous styles remain the same --- */
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(to bottom, #e0eafc, #f8f9fa); /* Lighter gradient */
+            min-height: 100vh;
+            color: #333; /* Darker text for better readability */
+        }
+
+        h1 {
+            color: #003366; /* Darker blue */
+            font-size: 2.1em;
+            margin-bottom: 10px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            color: #2a5282; /* Medium blue */
+            font-size: 1.3em;
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+
+        .simulation-container {
+            border: 2px solid #555; /* Slightly darker border */
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(50, 50, 90, 0.15); /* More subtle shadow */
+            background: #ffffff;
+            overflow: hidden;
+            margin-bottom: 25px;
+            position: relative;
+        }
+
+        svg {
+            display: block;
+            background: linear-gradient(to bottom, #fdfdfd, #f0f2f5); /* Very light SVG background */
+            user-select: none; /* Prevent text selection inside SVG */
+            -webkit-user-select: none; /* Safari/iOS support */
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+            width: 100%;
+            max-width: 750px; /* Slightly wider controls area */
+        }
+
+        .controls button {
+            padding: 12px 25px;
+            font-size: 1.1em;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.15s ease, background-color 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            flex: 1;
+            min-width: 160px;
+            text-align: center;
+        }
+
+        .controls button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+        }
+
+        .controls button:active:not(:disabled) {
+            transform: translateY(1px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+        }
+
+        .controls button:disabled {
+            background-color: #ced6e0 !important; /* Consistent disabled background */
+            cursor: not-allowed;
+            color: #7f8c8d !important;
+            transform: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            opacity: 0.7;
+        }
+
+        /* Consistent gradients */
+        #chargeButton { background: linear-gradient(135deg, #4facfe, #00f2fe); color: white; }
+        #closeButton { background: linear-gradient(135deg, #66bb6a, #43a047); color: white; }
+        #openButton { background: linear-gradient(135deg, #ef5350, #e53935); color: white; }
+        #resetButton { background: linear-gradient(135deg, #ab47bc, #8e24aa); color: white; }
+
+
+        .status {
+            text-align: center;
+            margin-top: 15px;
+            background: #f8f9fa; /* Lighter status background */
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05), 0 2px 5px rgba(0,0,0,0.08);
+            width: 100%;
+            max-width: 750px;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Adjust minmax */
+            gap: 10px 15px; /* Row and column gap */
+        }
+
+        .status p {
+            font-size: 1.05em; /* Slightly smaller */
+            margin: 6px 0;
+            color: #444; /* Darker gray */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 12px;
+            border-radius: 5px;
+            background-color: rgba(224, 234, 252, 0.3); /* Light blueish tint */
+            border: 1px solid #e0eafc;
+        }
+
+        .status span {
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 4px;
+            min-width: 90px; /* Ensure alignment */
+            text-align: center;
+        }
+
+        .status span.open { color: #c0392b; background-color: #fdecea; }
+        .status span.closed { color: #27ae60; background-color: #eaf7ec; }
+        .status span.charged { color: #2980b9; background-color: #eaf4fa; }
+        .status span.discharged { color: #d35400; background-color: #fef4ea; } /* Orange for discharged */
+        .status span.engaged { color: #27ae60; background-color: #eaf7ec; }
+        .status span.released { color: #c0392b; background-color: #fdecea; }
+
+        .logo {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: auto; /* Adjust width based on content */
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #003366;
+            color: white;
+            font-weight: bold;
+            font-size: 0.8em;
+            border-radius: 4px;
+            padding: 0 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .vacuum-indicator { /* Renamed from sf6-indicator */
+            display: flex;
+            align-items: center;
+            justify-content: center; /* Center items */
+            margin-top: 15px;
+            padding: 8px 15px;
+            background-color: #f0f4f8;
+            border-radius: 8px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .vacuum-gauge { /* Renamed from sf6-gauge */
+            width: 150px;
+            height: 15px; /* Thinner gauge */
+            background-color: #d1d8e0; /* Neutral background */
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 0 12px;
+            border: 1px solid #b0bec5;
+        }
+
+        .vacuum-level { /* Renamed from sf6-level */
+            height: 100%;
+            width: 100%; /* Start full */
+            background: linear-gradient(to right, #4caf50, #81c784); /* Green gradient */
+            transition: width 1s ease, background 1s ease; /* Animate width and color */
+        }
+
+        .info-panel {
+            margin-top: 25px;
+            padding: 18px;
+            background-color: #e8f0f7; /* Lighter info panel */
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+            width: 100%;
+            max-width: 750px;
+        }
+
+        .info-panel h3 {
+            color: #2a5282;
+            margin-top: 0;
+            border-bottom: 1px solid #c9d6e4;
+            padding-bottom: 10px;
+            font-size: 1.15em;
+        }
+        .info-panel h4 {
+            color: #1a436d;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            font-size: 1.05em;
+        }
+         .info-panel p {
+            font-size: 0.95em;
+            line-height: 1.5;
+            color: #444;
+            margin-bottom: 8px;
+         }
+         .info-panel code {
+             background-color: rgba(0,0,0,0.05);
+             padding: 2px 5px;
+             border-radius: 3px;
+             font-family: monospace;
+         }
+
+        /* SVG Styling and Animations */
+        .shadow-filter {
+            filter: url(#shadow);
+        }
+
+        #vacuumChamber {
+            filter: url(#glassEffect);
+            stroke: #546e7a; /* Darker blue-grey stroke */
+        }
+
+        /* Make transitions slightly faster for snappier feel */
+        #movingContactAssembly, #linkageMechanism, #mainSpringEnd, #openingSpringEnd, #closingLatch, #openingLatch, #linkageToContactRod {
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), fill 0.3s ease;
+        }
+
+        /* --- Element States --- */
+
+        /* Vacuum Interrupter Contacts - Center contacts in capsule */
+        #vacuumInterrupterGroup #movingContactAssembly {
+            transform: translate(50px, 30px); /* Centered, open */
+        }
+        #vacuumInterrupterGroup.closed #movingContactAssembly {
+            transform: translate(50px, 70px); /* Centered, closed (move Y only) */
+        }
+
+        /* Vacuum Interrupter Contacts - FLIPPED for INCOMER */
+        #vacuumInterrupterGroup.open #movingContactAssembly {
+            transform: translateY(0px,20px); /* Base position: Open (TOP) */
+        }
+        #vacuumInterrupterGroup.closed #movingContactAssembly {
+            transform: translateY(20px,40px); /* Move DOWN 50px to close (was 40px) */
+        }
+
+        /* Linkage Mechanism - Pivots around its base (170, 270) */
+        #linkageMechanism.open {
+             transform: rotate(0deg); /* Base rotation */
+        }
+        #linkageMechanism.closed {
+             transform: rotate(-25deg); /* Rotate CCW to push contact down via rod */
+        }
+        #linkageMechanism {
+            transform-origin: 0px 0px; /* Set origin to the pivot point (absolute 170, 270) */
+        }
+
+         /* Linkage connection rod moves with contact - FLIPPED Direction */
+         #linkageToContactRod.open { transform: translateY(20px); }
+         #linkageToContactRod.closed { transform: translateY(50px); } /* Moves DOWN */
+
+
+        /* Main Spring End - Simulates compression */
+        #mainSpringEnd.discharged {
+            transform: translateX(0px);
+            fill: #f39c12; /* Orange when discharged */
+        }
+        #mainSpringEnd.charged {
+            transform: translateX(50px); /* Move further to show compression */
+            fill: #2980b9; /* Blue when charged */
+        }
+        /* Main Spring Line - Visual compression */
+        #mainSpringLine.discharged {
+             stroke-dasharray: none; /* Solid line */
+             stroke: #7f8c8d;
+        }
+        #mainSpringLine.charged {
+             stroke-dasharray: 5, 5; /* Dashed line for compressed look */
+             stroke: #34495e;
+             animation: springVibrateCharged 0.5s ease-in-out infinite alternate; /* Vibrate slightly when charged */
+        }
+         #mainSpringLine { transition: stroke-dasharray 0.5s ease, stroke 0.5s ease; }
+
+
+        /* Opening Spring End */
+        #openingSpringEnd.discharged {
+            transform: translateX(0px);
+            fill: #f39c12; /* Orange when discharged */
+        }
+        #openingSpringEnd.charged {
+            transform: translateX(30px); /* Moves less than main spring */
+            fill: #e74c3c; /* Red when charged (ready to trip) */
+        }
+         /* Opening Spring Line */
+        #openingSpringLine.discharged {
+             stroke-dasharray: none;
+             stroke: #7f8c8d;
+        }
+        #openingSpringLine.charged {
+             stroke-dasharray: 4, 4;
+             stroke: #555;
+        }
+         #openingSpringLine { transition: stroke-dasharray 0.5s ease, stroke 0.5s ease; }
+
+        /* Latches */
+        #closingLatch.released {
+            transform: translateY(10px) rotate(15deg); /* Move down/out and rotate */
+            fill: #c0392b; /* Red */
+        }
+        #closingLatch.engaged {
+            transform: translateY(0px) rotate(0deg);
+            fill: #27ae60; /* Green */
+             animation: latchSnapEngage 0.2s ease-out;
+        }
+         #closingLatch { transform-origin: 8px 5px; /* Relative pivot */ }
+
+        #openingLatch.released {
+            transform: translateY(10px) rotate(15deg); /* Move down/out and rotate */
+            fill: #c0392b; /* Red */
+        }
+        #openingLatch.engaged {
+            transform: translateY(0px) rotate(0deg);
+            fill: #27ae60; /* Green */
+             animation: latchSnapEngage 0.2s ease-out;
+        }
+         #openingLatch { transform-origin: 8px 5px; /* Relative pivot */ }
+
+        /* Coil and Motor Indicators */
+        .coil-energized {
+            fill: #f1c40f !important; /* Yellow when energized */
+            animation: pulseCoil 0.4s ease-in-out;
+            filter: drop-shadow(0 0 4px rgba(241, 196, 15, 0.7));
+        }
+
+        #chargeMotorIndicator {
+            /* Ensure the group is not transformed/rotated itself */
+        }
+        #chargeMotorIndicator .motor-rotor {
+            transform-origin: 0px 0px; /* Default, will be overridden below */
+        }
+        #chargeMotorIndicator.motor-running .motor-rotor {
+            /* Center the rotation inside the motor circle (cx=0, cy=0 in local group coordinates) */
+            animation: rotateMotor 0.5s linear infinite;
+            transform-origin: 0px 0px;
+        }
+
+        .motor-rotor {
+            transform-origin: center center; /* Ensure rotation is centered */
+         }
+
+        /* Arc Flash Effect */
+        #arcFlash {
+            opacity: 0;
+            pointer-events: none; /* Prevent interaction */
+            transition: opacity 0.1s ease-out;
+        }
+        #arcFlash.active {
+            opacity: 1;
+            animation: flickerArc 0.25s ease-out;
+        }
+
+        /* Spring Release Animation */
+        .spring-releasing {
+            animation: springReleaseAnim 0.3s ease-out;
+        }
+
+        /* Current Flow Indicators */
+        .current-path {
+            stroke-dasharray: 8, 4; /* Dashed look */
+            stroke-dashoffset: 0;
+            transition: stroke-dashoffset 0.5s linear;
+            stroke: #bdc3c7; /* Grey when off */
+        }
+        .current-path.active {
+            stroke: #f39c12; /* Orange when flowing */
+            animation: flowCurrent 1.2s linear infinite;
+        }
+
+        /* --- Animations --- */
+        @keyframes springVibrateCharged {
+            0% { transform: translateX(0px); }
+            100% { transform: translateX(0.5px); } /* Subtle vibration */
+        }
+
+        @keyframes latchSnapEngage { /* Simple snap */
+            0% { transform: translateY(2px) rotate(5deg); }
+            100% { transform: translateY(0px) rotate(0deg); }
+        }
+
+        @keyframes pulseCoil { /* Quick pulse */
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
+        @keyframes rotateMotor { /* Motor rotor rotation */
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes springReleaseAnim { /* Visual recoil */
+            0% { stroke-dashoffset: 0; }
+            50% { stroke-dashoffset: 10; }
+            100% { stroke-dashoffset: 0; }
+        }
+
+        @keyframes flowCurrent {
+            to { stroke-dashoffset: -24; } /* Adjust based on dasharray (8+4)*2 */
+        }
+
+        @keyframes flickerArc {
+            0% { opacity: 0.9; transform: scale(1); }
+            25% { opacity: 0.6; transform: scale(0.9); }
+            50% { opacity: 1.0; transform: scale(1.1); }
+            75% { opacity: 0.7; transform: scale(1); }
+            100% { opacity: 0; }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+             h1 { font-size: 1.8em; }
+             h2 { font-size: 1.1em; }
+            .controls { gap: 10px; }
+            .controls button { font-size: 1em; padding: 10px 15px; min-width: 130px; }
+            .status-grid { grid-template-columns: 1fr; gap: 8px; }
+            .status p { font-size: 1em; padding: 5px 10px; }
+            .status span { min-width: 80px; font-size: 0.9em; }
+            .info-panel p { font-size: 0.9em;}
+            .logo { font-size: 0.7em; padding: 0 8px; height: 24px; }
+             svg { /* Make SVG slightly responsive if needed */
+                    width: 100%; height: 100%; 
+             }
+        }
+
+    </style>
+</head>
+<body>
+    <!-- Changed H1 -->
+    <h1>Schneider Electric HWX 11kV Vacuum Circuit Breaker</h1>
+    <!-- Changed H2 -->
+    <h2>HWX Operating Mechanism Simulation (Incomer)</h2>
+
+    <div class="simulation-container">
+        <!-- Changed Logo Text -->
+        <div class="logo">Prepared by: SHP</div>
+        <svg id="breakerSVG" width="700" height="500" viewBox="0 0 700 500">
+            <defs>
+                <!-- Filters, Gradients, Patterns remain the same -->
+                 <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="3" dy="3" stdDeviation="3" flood-color="#333" flood-opacity="0.2"/>
+                </filter>
+                <filter id="glassEffect">
+                     <feGaussianBlur in="SourceGraphic" stdDeviation="0.7" result="blur"/>
+                     <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7" result="glowAlpha"/>
+                     <feBlend in="SourceGraphic" in2="glowAlpha" mode="normal"/>
+                </filter>
+                <linearGradient id="metalGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                     <stop offset="0%" style="stop-color:#c5cdd1"/>
+                     <stop offset="50%" style="stop-color:#a7b1b7"/>
+                     <stop offset="100%" style="stop-color:#909ca3"/>
+                </linearGradient>
+                <linearGradient id="contactGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#d4ac0d" /> <!-- Copper/Brass color -->
+                    <stop offset="100%" stop-color="#b8860b" />
+                </linearGradient>
+                <linearGradient id="vacuumGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" style="stop-color:rgba(210, 228, 240, 0.6)"/>
+                    <stop offset="100%" style="stop-color:rgba(180, 200, 215, 0.75)"/>
+                </linearGradient>
+                <radialGradient id="arcGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                     <stop offset="0%" stop-color="#feffd3" stop-opacity="0.95"/> /* Whiter center */
+                     <stop offset="50%" stop-color="#ffe57b" stop-opacity="0.8"/> /* Yellow mid */
+                     <stop offset="90%" stop-color="#ffa726" stop-opacity="0.5"/> /* Orange edge */
+                     <stop offset="100%" stop-color="#fb8c00" stop-opacity="0"/> /* Fade out */
+                </radialGradient>
+                <pattern id="diagonalHatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                     <rect width="4" height="8" fill="#b0bec5" fill-opacity="0.4"></rect>
+                </pattern>
+            </defs>
+
+            <!-- Background/Frame -->
+            <rect x="5" y="5" width="690" height="490" fill="#f8f9fa" stroke="#78909c" stroke-width="1.5" rx="8" ry="8" class="shadow-filter"/>
+            <!-- Changed Text -->
+            <text x="350" y="30" text-anchor="middle" font-size="18" fill="#2c3e50" font-weight="600">Schneider HWX Mechanism Simulation</text>
+
+            <!-- Current Paths - FLIPPED for INCOMER -->
+            <path id="currentPathIn" d="M 90,410 L 90,335" stroke-width="6" stroke-linecap="round" class="current-path" fill="none"/> <!-- From Bottom (Line) - Will be kept active -->
+            <path id="currentPathOut" d="M 90,145 L 90,70" stroke-width="6" stroke-linecap="round" class="current-path" fill="none"/> <!-- To Top (Load/Bus) -->
+            <rect x="70" y="400" width="40" height="30" fill="url(#metalGradient)" stroke="#546e7a" rx="3"/> <!-- Bottom Terminal (LINE) -->
+            <rect x="70" y="55" width="40" height="30" fill="url(#metalGradient)" stroke="#546e7a" rx="3"/> <!-- Top Terminal (LOAD) -->
+            <text x="65" y="410" text-anchor="end" font-size="12" fill="#2c3e50">LINE</text>
+            <text x="65" y="75" text-anchor="end" font-size="12" fill="#2c3e50">LOAD (BUS)</text>
+
+            <!-- Vacuum Interrupter - FLIPPED for INCOMER -->
+            <g id="vacuumInterrupterGroup" class="open" transform="translate(40, 150)">
+                <!-- Bottle -->
+                <rect id="vacuumChamber" x="20" y="0" width="100" height="190" fill="url(#vacuumGradient)" stroke-width="1.5" rx="10" ry="10"/>
+                <text x="70" y="-8" text-anchor="middle" font-size="11" fill="#333" font-weight="bold">Vacuum Interrupter</text>
+
+                <!-- Contacts - Moving Top, Fixed Bottom - ALIGNED -->
+                <g id="movingContactAssembly" transform="translate(60, 30)">
+                    <!-- Rod base Y = -40 + 45 = 5 -->
+                     <rect id="movingContactRod" x="17" y="-40" width="6" height="45" fill="url(#metalGradient)" stroke="#546e7a"/>
+                     <!-- Mount Y = 5 to 20 -->
+                     <rect x="-10" y="5" width="70" height="15" fill="url(#metalGradient)" stroke="#546e7a"/>
+                     <!-- Contact face Y = 20 to 40 -->
+                     <rect id="movingContact" x="10" y="20" width="30" height="20" fill="url(#contactGradient)" stroke="#455a64" stroke-width="1"/>
+                </g>
+
+                <g id="fixedContactAssembly" transform="translate(50, 100)">
+                     <!-- Contact face Y = 10 to 30 -->
+                     <rect id="fixedContact" x="10" y="10" width="30" height="20" fill="url(#contactGradient)" stroke="#455a64" stroke-width="1"/>
+                     <!-- Mount Y = 30 to 45 -->
+                     <rect x="-10" y="30" width="70" height="15" fill="url(#metalGradient)" stroke="#546e7a"/>
+                </g>
+
+                 <!-- Arc Flash Effect - Positioned between contacts (Y=40 on moving, Y=10 on fixed, relative to their groups)-->
+                 <!-- Absolute Y: Moving contact bottom = 150+30+40 = 220. Fixed contact top = 150+100+10=260. Gap=40 -->
+                 <!-- Center of gap = (220+260)/2 = 240. Relative to base (150) -> 90 -->
+                <circle id="arcFlash" cx="70" cy="90" r="25" fill="url(#arcGradient)" opacity="0"/>
+
+                <!-- Status Indicator within bottle (Adjusted Y to be between contacts) -->
+                 <rect x="40" y="80" width="60" height="20" rx="3" ry="3" fill="#e8f0f7" stroke="#78909c" stroke-width="0.5"/>
+                 <text id="contactStatusText" x="70" y="94" text-anchor="middle" font-size="11" fill="#c0392b" font-weight="bold">OPEN</text>
+            </g>
+
+            <!-- Linkage System -->
+             <rect x="150" y="230" width="180" height="60" fill="none" stroke="#bdc3c7" stroke-width="1" stroke-dasharray="3 3"/>
+             <text x="160" y="285" font-size="10" fill="#7f8c8d">Linkage Area</text>
+
+             <g id="linkageMechanism" transform="translate(170, 270)">
+                 <circle cx="0" cy="0" r="6" fill="#34495e" class="shadow-filter"/>
+                 <line x1="0" y1="0" x2="80" y2="-20" stroke="#5d6d7e" stroke-width="5" stroke-linecap="round" class="link linkage-bar1"/>
+                 <circle cx="80" cy="-20" r="4" fill="#7f8c8d"/>
+                 <line x1="0" y1="0" x2="100" y2="15" stroke="#5d6d7e" stroke-width="5" stroke-linecap="round" class="link linkage-bar2"/>
+                 <circle cx="100" cy="15" r="4" fill="#7f8c8d"/>
+                 <line x1="80" y1="-20" x2="100" y2="15" stroke="#95a5a6" stroke-width="4" stroke-linecap="round" class="link linkage-bar3"/>
+            </g>
+
+            <!-- Rod Connecting Linkage to Moving Contact - Adjusted for ALIGNED contact -->
+             <g id="linkageToContactRod" class="open">
+                 <!-- Connects from linkage point (abs 250, 230) to top moving contact base (abs ~87, ~170) -->
+                <line x1="250" y1="230" x2="87" y2="170" stroke="#7f8c8d" stroke-width="6" stroke-linecap="round" />
+                 <circle cx="250" cy="230" r="4" fill="#7f8c8d"/>
+                 <circle cx="87" cy="170" r="5" fill="#7f8c8d"/>
+             </g>
+
+
+            <!-- Mechanism Area -->
+            <g id="mechanismGroup" transform="translate(320, 80)">
+                <!-- Housing -->
+                <rect x="0" y="0" width="360" height="380" fill="#e8f0f7" stroke="#78909c" stroke-width="1.5" rx="5" ry="5" class="shadow-filter"/>
+                <rect x="0" y="0" width="360" height="30" fill="#546e7a" stroke="none" rx="5" ry="0"/>
+                <!-- Changed Text -->
+                <text x="180" y="20" text-anchor="middle" font-size="14" fill="#ecf0f1" font-weight="bold">HWX Operating Mechanism</text>
+
+                 <!-- Main Pivot Shaft remains same -->
+                <circle cx="180" y="160" r="12" fill="#7f8c8d" stroke="#34495e" stroke-width="1"/>
+                <circle cx="180" y="160" r="4" fill="#ecf0f1"/>
+
+                <!-- Springs and Latches remain the same -->
+                 <g id="mainSpringAssembly">
+                    <rect x="20" y="70" width="40" height="180" fill="url(#diagonalHatch)" stroke="#78909c" stroke-width="1"/>
+                    <rect id="mainSpringEnd" x="20" y="70" width="40" height="180" fill="#f39c12" stroke="#546e7a" class="discharged"/>
+                    <line id="mainSpringLine" x1="60" y1="160" x2="180" y2="160" stroke="#7f8c8d" stroke-width="7" stroke-linecap="round" class="discharged"/>
+                    <text x="110" y="150" text-anchor="middle" font-size="12" fill="#333" font-weight="bold">Closing Spring</text>
+                    <text x="40" y="65" text-anchor="middle" font-size="10" fill="#555">(Movable End)</text>
+                 </g>
+                 <g id="closingLatchAssembly" transform="translate(190, 140)">
+                     <rect id="closingLatch" x="0" y="0" width="15" height="25" fill="#c0392b" stroke="#546e7a" rx="2" ry="2" class="released shadow-filter"/>
+                     <text x="25" y="15" font-size="12" fill="#333">Closing Latch</text>
+                 </g>
+                 <g id="closeCoilAssembly" transform="translate(240, 180)">
+                     <rect x="0" y="0" width="30" height="30" fill="#bdc3c7" stroke="#7f8c8d" rx="3" class="shadow-filter"/>
+                     <text x="15" y="20" text-anchor="middle" font-size="14" fill="#fff" font-weight="bold">C</text>
+                     <text x="40" y="20" font-size="12" fill="#333">Close Coil (Y2)</text>
+                 </g>
+                <g id="openingSpringAssembly">
+                     <rect x="20" y="280" width="30" height="80" fill="url(#diagonalHatch)" stroke="#78909c" stroke-width="1"/>
+                     <rect id="openingSpringEnd" x="20" y="280" width="30" height="80" fill="#f39c12" stroke="#546e7a" class="discharged"/>
+                     <line id="openingSpringLine" x1="50" y1="320" x2="180" y2="160" stroke="#7f8c8d" stroke-width="5" stroke-linecap="round" class="discharged"/>
+                     <text x="95" y="280" text-anchor="middle" font-size="12" fill="#333" font-weight="bold">Trip Spring</text>
+                     <text x="35" y="275" text-anchor="middle" font-size="10" fill="#555">(Movable End)</text>
+                 </g>
+                 <g id="openingLatchAssembly" transform="translate(190, 270)">
+                     <rect id="openingLatch" x="0" y="0" width="15" height="25" fill="#c0392b" stroke="#546e7a" rx="2" ry="2" class="released shadow-filter"/>
+                     <text x="25" y="15" font-size="12" fill="#333">Trip Latch</text>
+                 </g>
+                 <g id="tripCoilAssembly" transform="translate(240, 310)">
+                     <rect x="0" y="0" width="30" height="30" fill="#bdc3c7" stroke="#7f8c8d" rx="3" class="shadow-filter"/>
+                     <text x="15" y="20" text-anchor="middle" font-size="14" fill="#fff" font-weight="bold">T</text>
+                     <text x="40" y="20" font-size="12" fill="#333">Trip Coil (Y1)</text>
+                 </g>
+
+                <!-- Charging Motor - structure supports animation -->
+                 <g id="chargeMotorIndicator" transform="translate(300, 260)">
+                     <circle cx="0" cy="0" r="25" fill="#bdc3c7" stroke="#7f8c8d" class="shadow-filter motor-case"/>
+                     <g class="motor-rotor"> <!-- This group rotates -->
+                         <line x1="-15" y1="0" x2="15" y2="0" stroke="#7f8c8d" stroke-width="4"/>
+                         <line x1="0" y1="-15" x2="0" y2="15" stroke="#7f8c8d" stroke-width="4"/>
+                     </g>
+                     <text x="0" y="40" text-anchor="middle" font-size="11" fill="#333">Charging Motor</text>
+                 </g>
+
+                 <!-- Manual Charge Point remains same -->
+                <g transform="translate(300, 340)">
+                    <circle cx="0" cy="0" r="15" fill="#7f8c8d" stroke="#34495e" stroke-width="1" class="shadow-filter"/>
+                    <rect x="-4" y="-4" width="8" height="8" fill="#bdc3c7" transform="rotate(45)"/>
+                    <text x="0" y="25" text-anchor="middle" font-size="10" fill="#333">Manual Charge</text>
+                </g>
+            </g>
+
+            <!-- Control Panel Indicator Section -->
+            <g transform="translate(170, 400)">
+                 <rect x="0" y="0" width="350" height="50" fill="#d1d8e0" stroke="#78909c" rx="5" ry="5" class="shadow-filter"/>
+                 <text x="10" y="18" font-size="11" fill="#333" font-weight="bold">Indicators:</text>
+                 <g transform="translate(10, 28)">
+                     <circle id="openLED" cx="20" cy="0" r="7" fill="#e74c3c" stroke="#a1352a" stroke-width="1" class="shadow-filter"/>
+                     <text x="35" y="4" font-size="11" fill="#333">OPEN (I)</text>
+                     <circle id="closedLED" cx="100" cy="0" r="7" fill="#2ecc71" stroke="#1f8e4f" stroke-width="1" class="shadow-filter" opacity="0.3"/>
+                     <text x="115" y="4" font-size="11" fill="#333">CLOSED (O)</text>
+                     <circle id="chargedLED" cx="200" cy="0" r="7" fill="#3498db" stroke="#2470a3" stroke-width="1" class="shadow-filter" opacity="0.3"/>
+                     <text x="215" y="4" font-size="11" fill="#333">SPRING CHARGED</text>
+                </g>
+            </g>
+        </svg>
+    </div>
+
+    <div class="controls">
+        <button id="chargeButton">Charge Spring</button>
+        <button id="closeButton" disabled>Close Breaker</button>
+        <button id="openButton" disabled>Open Breaker</button>
+        <button id="resetButton">Reset Simulation</button>
+    </div>
+
+    <div class="status">
+        <div class="status-grid">
+            <p>Contact Status: <span id="contactStatus" class="open">OPEN</span></p>
+            <p>Closing Spring: <span id="mainSpringStatus" class="discharged">DISCHARGED</span></p>
+            <p>Trip Spring: <span id="openingSpringStatus" class="discharged">DISCHARGED</span></p>
+            <p>Closing Latch: <span id="closingLatchStatus" class="released">RELEASED</span></p>
+            <p>Trip Latch: <span id="openingLatchStatus" class="released">RELEASED</span></p>
+        </div>
+         <div class="vacuum-indicator">
+             <span>Vacuum Integrity:</span>
+             <div class="vacuum-gauge">
+                 <div id="vacuumLevel" class="vacuum-level"></div>
+             </div>
+             <span id="vacuumStatus">Normal</span>
+         </div>
+    </div>
+
+    <div class="info-panel">
+        <!-- Changed Title -->
+        <h3>HWX Simulation Guide</h3>
+        <p>This simulation represents an **Incomer Breaker** (Line feed from bottom, Load/Bus connection at top).</p>
+        <p>1. <strong>Charge Spring:</strong> Click to energize the motor (visualized by the rotating indicator, **sound plays**), charge the main closing spring (compression shown), and engage the closing latch. The trip spring is not charged at this stage.</p>
+        <p>2. <strong>Close Breaker:</strong> (Enabled after charging) Click to release the closing latch. The closing spring discharges, moving the linkage to push the **upper moving contact down** to meet the lower fixed contact. The trip spring is charged simultaneously and held by the trip latch.</p>
+        <p>3. <strong>Open Breaker:</strong> (Enabled when closed) Click to release the trip latch. The trip spring discharges, pulling the linkage back and raising the **upper moving contact** to the open position. An arc is briefly shown during contact separation.</p>
+        <p>4. <strong>Reset:</strong> Returns the simulation to the initial open, discharged state.</p>
+        <p><em>Note: The 'Vacuum Integrity' gauge is illustrative. The **Line side is shown continuously energized**.</em></p>
+
+        <h4>Mechanism Physics (Theoretical)</h4>
+        <p><strong>Spring Force & Energy:</strong> The energy for closing and opening is stored in powerful springs. The force (F) exerted by an ideal spring follows Hooke's Law: <code>F = -kx</code>, where 'k' is the spring constant (stiffness) and 'x' is the displacement (compression or extension) from its equilibrium position. The potential energy (PE) stored is <code>PE = 1/2 * k * x²</code>. The charging motor does work against the spring force to store this energy.</p>
+        <p><strong>Torque Calculation:</strong> Torque (τ) is the rotational force required to operate the mechanism's main shaft. It's fundamentally calculated as <code>τ = r × F</code>, where 'F' is the force applied and 'r' is the perpendicular distance from the pivot (lever arm). In this mechanism, the calculation is complex due to the changing angles and effective lever arms of the linkages connecting the springs and contacts to the main shaft, as well as frictional forces.</p>
+
+    </div>
+
+    <script>
+        // --- Web Audio Setup ---
+        let audioCtx = null;
+        let motorSoundOscillator = null;
+        let motorSoundGain = null;
+        const MOTOR_SOUND_FREQ = 80; // Hz (Low hum)
+        const MOTOR_SOUND_GAIN = 0.80; // Volume (Keep low)
+
+        function initAudio() {
+            if (!audioCtx) {
+                try {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {
+                    console.error("Web Audio API is not supported in this browser", e);
+                }
+            }
+        }
+
+        function playMotorSound() {
+            if (!audioCtx) return; // Don't play if audio context failed
+
+            // Stop existing sound if any (e.g., rapid clicks)
+            stopMotorSound();
+
+            motorSoundOscillator = audioCtx.createOscillator();
+            motorSoundGain = audioCtx.createGain();
+
+            motorSoundOscillator.connect(motorSoundGain);
+            motorSoundGain.connect(audioCtx.destination);
+
+            motorSoundOscillator.type = 'sawtooth'; // A bit buzzy
+            motorSoundOscillator.frequency.setValueAtTime(MOTOR_SOUND_FREQ, audioCtx.currentTime);
+            motorSoundGain.gain.setValueAtTime(MOTOR_SOUND_GAIN, audioCtx.currentTime);
+
+            motorSoundOscillator.start();
+        }
+
+        function stopMotorSound() {
+             if (motorSoundOscillator) {
+                try {
+                    motorSoundOscillator.stop();
+                    motorSoundOscillator.disconnect(); // Clean up connections
+                    motorSoundGain.disconnect();
+                } catch(e) {
+                    // Might throw if already stopped, ignore
+                }
+                motorSoundOscillator = null;
+                motorSoundGain = null;
+            }
+        }
+        // --- End Web Audio Setup ---
+
+
+        // Breaker state object
+        let breakerState = {
+            isClosed: false,
+            isMainSpringCharged: false,
+            isOpeningSpringCharged: false,
+            isClosingLatchEngaged: false,
+            isOpeningLatchEngaged: false,
+            vacuumLevel: 1.0
+        };
+
+        // DOM element references
+        const chargeButton = document.getElementById('chargeButton');
+        const closeButton = document.getElementById('closeButton');
+        const openButton = document.getElementById('openButton');
+        const resetButton = document.getElementById('resetButton');
+
+        const vacuumInterrupterGroup = document.getElementById('vacuumInterrupterGroup');
+        const linkageMechanism = document.getElementById('linkageMechanism');
+        const linkageToContactRod = document.getElementById('linkageToContactRod');
+
+        const mainSpringEnd = document.getElementById('mainSpringEnd');
+        const mainSpringLine = document.getElementById('mainSpringLine');
+        const openingSpringEnd = document.getElementById('openingSpringEnd');
+        const openingSpringLine = document.getElementById('openingSpringLine');
+
+        const closingLatch = document.getElementById('closingLatch');
+        const openingLatch = document.getElementById('openingLatch');
+
+        const closeCoilIndicator = document.getElementById('closeCoilAssembly').querySelector('rect');
+        const tripCoilIndicator = document.getElementById('tripCoilAssembly').querySelector('rect');
+        const chargeMotorIndicator = document.getElementById('chargeMotorIndicator');
+        const arcFlash = document.getElementById('arcFlash');
+
+        const contactStatusText = document.getElementById('contactStatusText');
+        const currentPathIn = document.getElementById('currentPathIn'); // LINE path
+        const currentPathOut = document.getElementById('currentPathOut'); // LOAD path
+
+        const openLED = document.getElementById('openLED');
+        const closedLED = document.getElementById('closedLED');
+        const chargedLED = document.getElementById('chargedLED');
+
+        const contactStatusSpan = document.getElementById('contactStatus');
+        const mainSpringStatusSpan = document.getElementById('mainSpringStatus');
+        const openingSpringStatusSpan = document.getElementById('openingSpringStatus');
+        const closingLatchStatusSpan = document.getElementById('closingLatchStatus');
+        const openingLatchStatusSpan = document.getElementById('openingLatchStatus');
+
+        const vacuumLevelElement = document.getElementById('vacuumLevel');
+        const vacuumStatusSpan = document.getElementById('vacuumStatus');
+
+        // --- Main Update Function ---
+        function updateBreakerVisuals() {
+            // 1. Contact State (Open/Closed) - Moving contact is TOP, moves DOWN to close
+            vacuumInterrupterGroup.className.baseVal = breakerState.isClosed ? 'closed' : 'open';
+            linkageMechanism.className.baseVal = breakerState.isClosed ? 'closed' : 'open'; // Linkage rotates CCW to close
+            linkageToContactRod.className.baseVal = breakerState.isClosed ? 'closed' : 'open'; // Rod moves DOWN to close
+            contactStatusText.textContent = breakerState.isClosed ? 'CLOSED' : 'OPEN';
+            contactStatusText.setAttribute('fill', breakerState.isClosed ? '#27ae60' : '#c0392b');
+            contactStatusSpan.textContent = breakerState.isClosed ? 'CLOSED' : 'OPEN';
+            contactStatusSpan.className = breakerState.isClosed ? 'closed' : 'open';
+
+            // --- Current Path Update ---
+            // Line Path (IN) is ALWAYS active now
+            currentPathIn.classList.add('active');
+            // Load Path (OUT) is active only when closed
+            currentPathOut.classList.toggle('active', breakerState.isClosed);
+            // --- End Current Path Update ---
+
+            openLED.style.opacity = breakerState.isClosed ? '0.3' : '1';
+            closedLED.style.opacity = breakerState.isClosed ? '1' : '0.3';
+
+            // 2. Main Closing Spring State
+            mainSpringEnd.className.baseVal = breakerState.isMainSpringCharged ? 'charged' : 'discharged';
+            mainSpringLine.className.baseVal = breakerState.isMainSpringCharged ? 'charged' : 'discharged';
+            mainSpringStatusSpan.textContent = breakerState.isMainSpringCharged ? 'CHARGED' : 'DISCHARGED';
+            mainSpringStatusSpan.className = breakerState.isMainSpringCharged ? 'charged' : 'discharged';
+            chargedLED.style.opacity = breakerState.isMainSpringCharged ? '1' : '0.3';
+
+            // 3. Opening/Trip Spring State
+            openingSpringEnd.className.baseVal = breakerState.isOpeningSpringCharged ? 'charged' : 'discharged';
+            openingSpringLine.className.baseVal = breakerState.isOpeningSpringCharged ? 'charged' : 'discharged';
+            openingSpringStatusSpan.textContent = breakerState.isOpeningSpringCharged ? 'CHARGED' : 'DISCHARGED';
+            openingSpringStatusSpan.className = breakerState.isOpeningSpringCharged ? 'charged' : 'discharged';
+
+            // 4. Closing Latch State
+            closingLatch.className.baseVal = breakerState.isClosingLatchEngaged ? 'engaged shadow-filter' : 'released shadow-filter';
+            closingLatchStatusSpan.textContent = breakerState.isClosingLatchEngaged ? 'ENGAGED' : 'RELEASED';
+            closingLatchStatusSpan.className = breakerState.isClosingLatchEngaged ? 'engaged' : 'released';
+
+            // 5. Opening/Trip Latch State
+            openingLatch.className.baseVal = breakerState.isOpeningLatchEngaged ? 'engaged shadow-filter' : 'released shadow-filter';
+            openingLatchStatusSpan.textContent = breakerState.isOpeningLatchEngaged ? 'ENGAGED' : 'RELEASED';
+            openingLatchStatusSpan.className = breakerState.isOpeningLatchEngaged ? 'engaged' : 'released';
+
+            // 6. Vacuum Integrity (Illustrative)
+            vacuumLevelElement.style.width = `${breakerState.vacuumLevel * 100}%`;
+            let vacuumStatusText = 'Normal';
+            let vacuumColor = 'linear-gradient(to right, #4caf50, #81c784)'; // Green
+            if (breakerState.vacuumLevel < 0.7) {
+                vacuumStatusText = 'Low';
+                vacuumColor = 'linear-gradient(to right, #ffc107, #ffd54f)'; // Yellow
+            }
+            if (breakerState.vacuumLevel < 0.4) {
+                vacuumStatusText = 'Critical';
+                vacuumColor = 'linear-gradient(to right, #f44336, #ef5350)'; // Red
+            }
+            vacuumStatusSpan.textContent = vacuumStatusText;
+            vacuumLevelElement.style.background = vacuumColor;
+
+
+            // 7. Button Enable/Disable States
+            chargeButton.disabled = breakerState.isMainSpringCharged;
+            closeButton.disabled = !breakerState.isMainSpringCharged || breakerState.isClosed;
+            openButton.disabled = !breakerState.isClosed || !breakerState.isOpeningLatchEngaged;
+        }
+
+        // --- Action Functions ---
+
+        function simulateCharge() {
+            if (breakerState.isMainSpringCharged) return;
+
+            // Initialize audio context on first user interaction
+            initAudio();
+
+            chargeButton.disabled = true;
+            chargeMotorIndicator.classList.add('motor-running'); // Start motor visual
+            playMotorSound(); // Start motor sound
+
+            // Simulate charging time
+            setTimeout(() => {
+                breakerState.isMainSpringCharged = true;
+                breakerState.isClosingLatchEngaged = true;
+
+                chargeMotorIndicator.classList.remove('motor-running'); // Stop motor visual
+                stopMotorSound(); // Stop motor sound
+                updateBreakerVisuals(); // Update visuals after charging completes
+            }, 1200); // Motor runs for 1.2 seconds
+        }
+
+        function simulateClose() {
+            if (!breakerState.isMainSpringCharged || breakerState.isClosed) return;
+
+            closeCoilIndicator.classList.add('coil-energized');
+            breakerState.isClosingLatchEngaged = false;
+            updateBreakerVisuals();
+
+            setTimeout(() => {
+                 closeCoilIndicator.classList.remove('coil-energized');
+                 mainSpringLine.classList.add('spring-releasing');
+                 breakerState.isMainSpringCharged = false;
+                 breakerState.isClosed = true;
+                 breakerState.isOpeningSpringCharged = true;
+                 breakerState.isOpeningLatchEngaged = true;
+                 updateBreakerVisuals();
+                 setTimeout(() => mainSpringLine.classList.remove('spring-releasing'), 300);
+            }, 200);
+        }
+
+        function simulateOpen() {
+            if (!breakerState.isClosed || !breakerState.isOpeningLatchEngaged) return;
+
+            tripCoilIndicator.classList.add('coil-energized');
+            breakerState.isOpeningLatchEngaged = false;
+            updateBreakerVisuals();
+
+             setTimeout(() => {
+                 tripCoilIndicator.classList.remove('coil-energized');
+                 arcFlash.classList.add('active');
+                 openingSpringLine.classList.add('spring-releasing');
+                 breakerState.isOpeningSpringCharged = false;
+                 breakerState.isClosed = false;
+                 updateBreakerVisuals();
+                 setTimeout(() => {
+                     arcFlash.classList.remove('active');
+                     openingSpringLine.classList.remove('spring-releasing');
+                 }, 300);
+             }, 200);
+        }
+
+        function simulateReset() {
+            breakerState = {
+                isClosed: false,
+                isMainSpringCharged: false,
+                isOpeningSpringCharged: false,
+                isClosingLatchEngaged: false,
+                isOpeningLatchEngaged: false,
+                vacuumLevel: 1.0
+            };
+
+            // Clear animations & sound
+            chargeMotorIndicator.classList.remove('motor-running');
+            stopMotorSound(); // Ensure sound stops on reset
+            closeCoilIndicator.classList.remove('coil-energized');
+            tripCoilIndicator.classList.remove('coil-energized');
+            arcFlash.classList.remove('active');
+            mainSpringLine.classList.remove('spring-releasing');
+            openingSpringLine.classList.remove('spring-releasing');
+
+            updateBreakerVisuals(); // Apply initial state (including making Line path active)
+        }
+
+        // --- Event Listeners ---
+        chargeButton.addEventListener('click', simulateCharge);
+        closeButton.addEventListener('click', simulateClose);
+        openButton.addEventListener('click', simulateOpen);
+        resetButton.addEventListener('click', simulateReset);
+
+        // --- Initial Setup ---
+        document.addEventListener('DOMContentLoaded', () => {
+            simulateReset(); // Initialize visuals on page load
+        });
+
+    </script>
+</body>
+</html>
