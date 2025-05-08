@@ -686,7 +686,13 @@
         let motorSoundOscillator = null;
         let motorSoundGain = null;
         const MOTOR_SOUND_FREQ = 80; // Hz (Low hum)
-        const MOTOR_SOUND_GAIN = 0.80; // Volume (Keep low)
+        const MOTOR_SOUND_GAIN = 0.08; // Volume (Keep low)
+
+        // New audio parameters for breaker sounds
+        const CONTACT_SOUND_FREQ = 120; // Hz
+        const CONTACT_SOUND_GAIN = 0.15;
+        const SPRING_RELEASE_FREQ = 150;
+        const SPRING_RELEASE_GAIN = 0.12;
 
         function initAudio() {
             if (!audioCtx) {
@@ -730,8 +736,44 @@
                 motorSoundGain = null;
             }
         }
-        // --- End Web Audio Setup ---
 
+        function playBreakerCloseSound() {
+            if (!audioCtx) return;
+            
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            // Quick "thunk" sound for closing
+            oscillator.type = 'square';
+            oscillator.frequency.setValueAtTime(CONTACT_SOUND_FREQ, audioCtx.currentTime);
+            gainNode.gain.setValueAtTime(CONTACT_SOUND_GAIN, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+            
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.15);
+        }
+
+        function playBreakerOpenSound() {
+            if (!audioCtx) return;
+            
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            // Lighter "pop" sound for opening
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(SPRING_RELEASE_FREQ, audioCtx.currentTime);
+            gainNode.gain.setValueAtTime(SPRING_RELEASE_GAIN, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.1);
+        }
 
         // Breaker state object
         let breakerState = {
@@ -886,6 +928,7 @@
                  breakerState.isClosed = true;
                  breakerState.isOpeningSpringCharged = true;
                  breakerState.isOpeningLatchEngaged = true;
+                 playBreakerCloseSound(); // Add closing sound
                  updateBreakerVisuals();
                  setTimeout(() => mainSpringLine.classList.remove('spring-releasing'), 300);
             }, 200);
@@ -904,6 +947,7 @@
                  openingSpringLine.classList.add('spring-releasing');
                  breakerState.isOpeningSpringCharged = false;
                  breakerState.isClosed = false;
+                 playBreakerOpenSound(); // Add opening sound
                  updateBreakerVisuals();
                  setTimeout(() => {
                      arcFlash.classList.remove('active');
